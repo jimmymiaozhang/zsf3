@@ -1,0 +1,224 @@
+import mapboxgl, { type CustomLayerInterface, type LngLatBounds } from 'mapbox-gl';
+import * as THREE from 'three';
+
+const FEET_TO_METERS = 0.3048;
+const ENVELOPE_FILL_COLOR = 0xff3b30;
+const ENVELOPE_FILL_OPACITY = 0.18;
+const ENVELOPE_LINE_COLOR = 0xffffff;
+const ENVELOPE_LINE_OPACITY = 0.95;
+
+type Anchor = {
+  lng: number;
+  lat: number;
+  elevation_m?: number;
+};
+
+type EnvelopeItem = {
+  id: string;
+  bbl: string;
+  borough: number;
+  block: number;
+  lot: number;
+  anchor: Anchor;
+  vertices_m: [number, number, number][];
+  faces: [number, number, number][];
+  edges: [number, number][];
+};
+
+export type ZoningEnvelopeCollection = {
+  version: number;
+  coordinate_system: string;
+  units: 'meters' | 'feet';
+  items: EnvelopeItem[];
+};
+
+function getUnitScale(units: ZoningEnvelopeCollection['units']) {
+  return units === 'feet' ? FEET_TO_METERS : 1;
+}
+
+function buildFaceGeometry(
+  vertices: [number, number, number][],
+  faces: [number, number, number][]
+) {
+  const positions = new Float32Array(faces.length * 9);
+
+  faces.forEach(([a, b, c], faceIndex) => {
+    const offset = faceIndex * 9;
+    const [ax, ay, az] = vertices[a];
+    const [bx, by, bz] = vertices[b];
+    const [cx, cy, cz] = vertices[c];
+
+    positions.set([ax, -ay, az, bx, -by, bz, cx, -cy, cz], offset);
+  });
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function buildEdgeGeometry(
+  vertices: [number, number, number][],
+  edges: [number, number][]
+) {
+  const positions = new Float32Array(edges.length * 6);
+
+  edges.forEach(([start, end], edgeIndex) => {
+    const offset = edgeIndex * 6;
+    const [sx, sy, sz] = vertices[start];
+    const [ex, ey, ez] = vertices[end];
+
+    positions.set([sx, -sy, sz, ex, -ey, ez], offset);
+  });
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  return geometry;
+}
+
+export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
+  const unitScale = getUnitScale(collection.units);
+  const group = new THREE.Group();
+  group.name = 'zsf-envelope-scene';
+
+  collection.items.forEach((item) => {
+    const mercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
+      { lng: item.anchor.lng, lat: item.anchor.lat },
+      item.anchor.elevation_m ?? 0
+    );
+    const meterScale = mercatorAnchor.meterInMercatorCoordinateUnits();
+
+    const itemGroup = new THREE.Group();
+    itemGroup.name = item.id;
+    itemGroup.position.set(
+      mercatorAnchor.x,
+      mercatorAnchor.y,
+      mercatorAnchor.z
+    );
+
+    if (item.faces.length > 0) {
+      const mesh = new THREE.Mesh(
+        buildFaceGeometry(item.vertices_m, item.faces),
+        new THREE.MeshBasicMaterial({
+          color: ENVELOPE_FILL_COLOR,
+          transparent: true,
+          opacity: ENVELOPE_FILL_OPACITY,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        })
+      );
+      mesh.scale.setScalar(unitScale * meterScale);
+      itemGroup.add(mesh);
+    }
+
+    if (item.edges.length > 0) {
+      const lines = new THREE.LineSegments(
+        buildEdgeGeometry(item.vertices_m, item.edges),
+        new THREE.LineBasicMaterial({
+          color: ENVELOPE_LINE_COLOR,
+          transparent: true,
+          opacity: ENVELOPE_LINE_OPACITY,
+        })
+      );
+      lines.scale.setScalar(unitScale * meterScale);
+      itemGroup.add(lines);
+    }
+
+    group.add(itemGroup);
+  });
+
+  return group;
+}
+
+function mercatorXToLng(x: number) {
+  return x * 360 - 180;
+}
+
+function mercatorYToLat(y: number) {
+  const yDegrees = 180 - y * 360;
+  return (360 / Math.PI) * Math.atan(Math.exp((yDegrees * Math.PI) / 180)) - 90;
+}
+
+export function getEnvelopeCollectionBounds(
+  collection: ZoningEnvelopeCollection
+): LngLatBounds {
+  const unitScale = getUnitScale(collection.units);
+
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+
+  collection.items.forEach((item) => {
+    const mercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
+      { lng: item.anchor.lng, lat: item.anchor.lat },
+      item.anchor.elevation_m ?? 0
+    );
+    const meterScale = mercatorAnchor.meterInMercatorCoordinateUnits();
+
+    item.vertices_m.forEach(([x, y]) => {
+      const mercatorX = mercatorAnchor.x + x * unitScale * meterScale;
+      const mercatorY = mercatorAnchor.y - y * unitScale * meterScale;
+      const lng = mercatorXToLng(mercatorX);
+      const lat = mercatorYToLat(mercatorY);
+
+      minLng = Math.min(minLng, lng);
+      minLat = Math.min(minLat, lat);
+      maxLng = Math.max(maxLng, lng);
+      maxLat = Math.max(maxLat, lat);
+    });
+  });
+
+  return new mapboxgl.LngLatBounds([minLng, minLat], [maxLng, maxLat]);
+}
+
+export function createMercatorSceneLayer(
+  id: string,
+  root: THREE.Object3D
+): CustomLayerInterface {
+  const camera = new THREE.Camera();
+  const scene = new THREE.Scene();
+  scene.add(root);
+
+  let renderer: THREE.WebGLRenderer | null = null;
+
+  return {
+    id,
+    type: 'custom',
+    renderingMode: '3d',
+    onAdd: (map, gl) => {
+      renderer = new THREE.WebGLRenderer({
+        canvas: map.getCanvas(),
+        context: gl,
+        antialias: true,
+      });
+      renderer.autoClear = false;
+    },
+    render: (_gl, matrix) => {
+      if (!renderer) {
+        return;
+      }
+
+      camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix as number[]);
+      renderer.resetState();
+      renderer.render(scene, camera);
+    },
+  };
+}
+
+export function disposeThreeObject(object: THREE.Object3D) {
+  object.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    if (mesh.geometry) {
+      mesh.geometry.dispose();
+    }
+
+    const material = (mesh as { material?: THREE.Material | THREE.Material[] })
+      .material;
+    if (Array.isArray(material)) {
+      material.forEach((entry) => entry.dispose());
+    } else {
+      material?.dispose();
+    }
+  });
+}

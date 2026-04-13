@@ -1,0 +1,46 @@
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.map-container {
+  position: absolute;
+  inset: 0;
+}
+
+.panel {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  width: min(360px, calc(100% - 32px));
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.84);
+  color: #f8fafc;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+}
+
+.panel h1 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.panel p {
+  margin: 0 0 10px;
+  color: #dbe4f0;
+}
+
+.panel code {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  word-break: break-all;
+}
