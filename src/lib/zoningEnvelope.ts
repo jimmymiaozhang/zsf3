@@ -32,6 +32,11 @@ export type ZoningEnvelopeCollection = {
   items: EnvelopeItem[];
 };
 
+type EnvelopeScene = {
+  anchor: Anchor;
+  root: THREE.Group;
+};
+
 function getUnitScale(units: ZoningEnvelopeCollection['units']) {
   return units === 'feet' ? FEET_TO_METERS : 1;
 }
@@ -78,22 +83,32 @@ function buildEdgeGeometry(
 
 export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
   const unitScale = getUnitScale(collection.units);
+  const sceneAnchor = collection.items[0]?.anchor;
   const group = new THREE.Group();
   group.name = 'zsf-envelope-scene';
+
+  if (!sceneAnchor) {
+    throw new Error('Envelope collection does not contain any items.');
+  }
+
+  const sceneMercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
+    { lng: sceneAnchor.lng, lat: sceneAnchor.lat },
+    sceneAnchor.elevation_m ?? 0
+  );
+  const sceneMeterScale = sceneMercatorAnchor.meterInMercatorCoordinateUnits();
 
   collection.items.forEach((item) => {
     const mercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
       { lng: item.anchor.lng, lat: item.anchor.lat },
       item.anchor.elevation_m ?? 0
     );
-    const meterScale = mercatorAnchor.meterInMercatorCoordinateUnits();
 
     const itemGroup = new THREE.Group();
     itemGroup.name = item.id;
     itemGroup.position.set(
-      mercatorAnchor.x,
-      mercatorAnchor.y,
-      mercatorAnchor.z
+      (mercatorAnchor.x - sceneMercatorAnchor.x) / sceneMeterScale,
+      (mercatorAnchor.y - sceneMercatorAnchor.y) / sceneMeterScale,
+      (mercatorAnchor.z - sceneMercatorAnchor.z) / sceneMeterScale
     );
 
     if (item.faces.length > 0) {
@@ -107,7 +122,8 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
           side: THREE.DoubleSide,
         })
       );
-      mesh.scale.setScalar(unitScale * meterScale);
+      mesh.scale.setScalar(unitScale);
+      mesh.renderOrder = 1;
       itemGroup.add(mesh);
     }
 
@@ -120,14 +136,18 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
           opacity: ENVELOPE_LINE_OPACITY,
         })
       );
-      lines.scale.setScalar(unitScale * meterScale);
+      lines.scale.setScalar(unitScale);
+      lines.renderOrder = 2;
       itemGroup.add(lines);
     }
 
     group.add(itemGroup);
   });
 
-  return group;
+  return {
+    anchor: sceneAnchor,
+    root: group,
+  } satisfies EnvelopeScene;
 }
 
 function mercatorXToLng(x: number) {
@@ -174,11 +194,22 @@ export function getEnvelopeCollectionBounds(
 
 export function createMercatorSceneLayer(
   id: string,
-  root: THREE.Object3D
+  root: THREE.Object3D,
+  anchor: Anchor
 ): CustomLayerInterface {
   const camera = new THREE.Camera();
   const scene = new THREE.Scene();
   scene.add(root);
+  const mercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
+    { lng: anchor.lng, lat: anchor.lat },
+    anchor.elevation_m ?? 0
+  );
+  const modelTransform = {
+    translateX: mercatorAnchor.x,
+    translateY: mercatorAnchor.y,
+    translateZ: mercatorAnchor.z,
+    scale: mercatorAnchor.meterInMercatorCoordinateUnits(),
+  };
 
   let renderer: THREE.WebGLRenderer | null = null;
 
@@ -199,7 +230,22 @@ export function createMercatorSceneLayer(
         return;
       }
 
-      camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix as number[]);
+      const projectionMatrix = new THREE.Matrix4().fromArray(matrix as number[]);
+      const modelMatrix = new THREE.Matrix4()
+        .makeTranslation(
+          modelTransform.translateX,
+          modelTransform.translateY,
+          modelTransform.translateZ
+        )
+        .scale(
+          new THREE.Vector3(
+            modelTransform.scale,
+            modelTransform.scale,
+            modelTransform.scale
+          )
+        );
+
+      camera.projectionMatrix = projectionMatrix.multiply(modelMatrix);
       renderer.resetState();
       renderer.render(scene, camera);
     },

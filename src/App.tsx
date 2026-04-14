@@ -90,7 +90,8 @@ function App() {
 
         const envelopeLayer = createMercatorSceneLayer(
           'sample-envelope-layer',
-          envelopeRoot
+          envelopeRoot.root,
+          envelopeRoot.anchor
         );
 
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -121,7 +122,7 @@ function App() {
       isCancelled = true;
       map?.remove();
       if (envelopeRoot) {
-        disposeThreeObject(envelopeRoot);
+        disposeThreeObject(envelopeRoot.root);
       }
       mapRef.current = null;
       dataBoundsRef.current = null;
