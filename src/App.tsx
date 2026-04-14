@@ -145,6 +145,16 @@ function App() {
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
         map.on('style.load', () => {
+          map?.setConfigProperty(
+            'basemap',
+            'showPointOfInterestLabels',
+            false
+          );
+          map?.setConfigProperty('basemap', 'showTransitLabels', false);
+          map?.setConfigProperty('basemap', 'showLandmarkIconLabels', false);
+          map?.setConfigProperty('basemap', 'showRoadLabels', true);
+          map?.setConfigProperty('basemap', 'showPlaceLabels', true);
+
           if (map && !map.getLayer('sample-envelope-layer')) {
             map.addLayer(envelopeLayer);
           }

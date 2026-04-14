@@ -4,8 +4,11 @@ import * as THREE from 'three';
 const FEET_TO_METERS = 0.3048;
 const ENVELOPE_FILL_COLOR = 0xff3b30;
 const ENVELOPE_FILL_OPACITY = 0.18;
-const ENVELOPE_LINE_COLOR = 0xffffff;
-const ENVELOPE_LINE_OPACITY = 0.95;
+const ENVELOPE_LINE_COLOR = 0x912739;
+const ENVELOPE_LINE_OPACITY = 0.5;
+const ENVELOPE_HIDDEN_LINE_OPACITY = 0.1;
+const ENVELOPE_HIDDEN_LINE_DASH_SIZE = 0.5;
+const ENVELOPE_HIDDEN_LINE_GAP_SIZE = 1;
 
 type Anchor = {
   lng: number;
@@ -112,8 +115,10 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
     );
 
     if (item.faces.length > 0) {
+      const faceGeometry = buildFaceGeometry(item.vertices_m, item.faces);
+
       const mesh = new THREE.Mesh(
-        buildFaceGeometry(item.vertices_m, item.faces),
+        faceGeometry,
         new THREE.MeshBasicMaterial({
           color: ENVELOPE_FILL_COLOR,
           transparent: true,
@@ -123,22 +128,59 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
         })
       );
       mesh.scale.setScalar(unitScale);
-      mesh.renderOrder = 1;
+      mesh.renderOrder = 0;
       itemGroup.add(mesh);
+
+      // After the visible translucent fill renders, write face depth so
+      // hidden edge lines stay occluded by nearer red surfaces.
+      const depthMesh = new THREE.Mesh(
+        faceGeometry,
+        new THREE.MeshBasicMaterial({
+          colorWrite: false,
+          depthWrite: true,
+          depthTest: true,
+          side: THREE.DoubleSide,
+        })
+      );
+      depthMesh.scale.setScalar(unitScale);
+      depthMesh.renderOrder = 1;
+      itemGroup.add(depthMesh);
     }
 
     if (item.edges.length > 0) {
-      const lines = new THREE.LineSegments(
-        buildEdgeGeometry(item.vertices_m, item.edges),
+      const edgeGeometry = buildEdgeGeometry(item.vertices_m, item.edges);
+
+      const hiddenLines = new THREE.LineSegments(
+        edgeGeometry,
+        new THREE.LineDashedMaterial({
+          color: ENVELOPE_LINE_COLOR,
+          transparent: true,
+          opacity: ENVELOPE_HIDDEN_LINE_OPACITY,
+          dashSize: ENVELOPE_HIDDEN_LINE_DASH_SIZE,
+          gapSize: ENVELOPE_HIDDEN_LINE_GAP_SIZE,
+          depthTest: true,
+          depthWrite: false,
+          depthFunc: THREE.GreaterDepth,
+        })
+      );
+      hiddenLines.computeLineDistances();
+      hiddenLines.scale.setScalar(unitScale);
+      hiddenLines.renderOrder = 2;
+      itemGroup.add(hiddenLines);
+
+      const visibleLines = new THREE.LineSegments(
+        edgeGeometry,
         new THREE.LineBasicMaterial({
           color: ENVELOPE_LINE_COLOR,
           transparent: true,
           opacity: ENVELOPE_LINE_OPACITY,
+          depthTest: true,
+          depthWrite: false,
         })
       );
-      lines.scale.setScalar(unitScale);
-      lines.renderOrder = 2;
-      itemGroup.add(lines);
+      visibleLines.scale.setScalar(unitScale);
+      visibleLines.renderOrder = 3;
+      itemGroup.add(visibleLines);
     }
 
     group.add(itemGroup);
