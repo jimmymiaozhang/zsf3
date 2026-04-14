@@ -134,7 +134,7 @@ function MapArea({
 
         const bounds = getEnvelopeCollectionBounds(collection);
         dataBoundsRef.current = bounds;
-        envelopeRoot = buildEnvelopeSceneGroup(collection);
+        envelopeRoot = buildEnvelopeSceneGroup(collections);
         const defaultBbl = collection.items[0].bbl;
 
         mapboxgl.accessToken = token;
