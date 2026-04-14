@@ -6,6 +6,7 @@ import {
   createMercatorSceneLayer,
   disposeThreeObject,
   getEnvelopeCollectionBounds,
+  type EnvelopeSceneLayer,
   type ZoningEnvelopeCollection,
 } from './lib/zoningEnvelope';
 
@@ -89,6 +90,7 @@ function App() {
     let isCancelled = false;
     let map: mapboxgl.Map | null = null;
     let envelopeRoot: ReturnType<typeof buildEnvelopeSceneGroup> | null = null;
+    let cleanupInteraction: (() => void) | null = null;
 
     const initialize = async () => {
       try {
@@ -118,6 +120,7 @@ function App() {
         const bounds = getEnvelopeCollectionBounds(collection);
         dataBoundsRef.current = bounds;
         envelopeRoot = buildEnvelopeSceneGroup(collection);
+        const defaultBbl = collection.items[0].bbl;
 
         mapboxgl.accessToken = token;
 
@@ -136,10 +139,9 @@ function App() {
           antialias: true,
         });
 
-        const envelopeLayer = createMercatorSceneLayer(
+        const envelopeLayer: EnvelopeSceneLayer = createMercatorSceneLayer(
           'sample-envelope-layer',
-          envelopeRoot.root,
-          envelopeRoot.anchor
+          envelopeRoot
         );
 
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -166,6 +168,54 @@ function App() {
           }
         });
 
+        const handleMouseMove = (event: mapboxgl.MapMouseEvent) => {
+          if (!map) {
+            return;
+          }
+
+          const hoveredEnvelope = envelopeLayer.pickItemAtScreenPoint(
+            event.point.x,
+            event.point.y,
+            map.getCanvas().clientWidth,
+            map.getCanvas().clientHeight
+          );
+
+          map.getCanvas().style.cursor = hoveredEnvelope ? 'pointer' : '';
+        };
+
+        const handleClick = (event: mapboxgl.MapMouseEvent) => {
+          if (!map) {
+            return;
+          }
+
+          const pickedEnvelope = envelopeLayer.pickItemAtScreenPoint(
+            event.point.x,
+            event.point.y,
+            map.getCanvas().clientWidth,
+            map.getCanvas().clientHeight
+          );
+
+          envelopeLayer.setSelectedItem(pickedEnvelope?.id ?? null);
+          setActiveBbl(pickedEnvelope?.bbl ?? defaultBbl);
+        };
+
+        const handleMouseLeave = () => {
+          if (!map) {
+            return;
+          }
+
+          map.getCanvas().style.cursor = '';
+        };
+
+        map.on('mousemove', handleMouseMove);
+        map.on('click', handleClick);
+        map.getCanvas().addEventListener('mouseleave', handleMouseLeave);
+        cleanupInteraction = () => {
+          map?.off('mousemove', handleMouseMove);
+          map?.off('click', handleClick);
+          map?.getCanvas().removeEventListener('mouseleave', handleMouseLeave);
+        };
+
         mapRef.current = map;
       } catch (error) {
         const message =
@@ -180,6 +230,7 @@ function App() {
 
     return () => {
       isCancelled = true;
+      cleanupInteraction?.();
       map?.remove();
       if (envelopeRoot) {
         disposeThreeObject(envelopeRoot.root);
