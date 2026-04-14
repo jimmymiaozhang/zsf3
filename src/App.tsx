@@ -9,10 +9,54 @@ import {
   type ZoningEnvelopeCollection,
 } from './lib/zoningEnvelope';
 
-const SAMPLE_ENVELOPE_PATH =
-  '/data/test_one_sample/3026790056_automatically_gpt_4o_mini_envelope.json';
+type BlockIndex = {
+  blocks: string[];
+};
+
+const DATASET_FOLDER_PATH = '/data/test_multiple_blocks';
+const BLOCK_INDEX_PATH = `${DATASET_FOLDER_PATH}/index.json`;
 const DEFAULT_BEARING = 18;
 const DEFAULT_PITCH = 68;
+
+async function fetchJson<T>(path: string) {
+  const response = await fetch(path);
+  if (!response.ok) {
+    throw new Error(`Unable to load ${path}: ${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+function mergeCollections(
+  collections: ZoningEnvelopeCollection[]
+): ZoningEnvelopeCollection {
+  if (!collections.length) {
+    throw new Error('Block index does not contain any envelope files.');
+  }
+
+  const [firstCollection, ...restCollections] = collections;
+
+  restCollections.forEach((collection) => {
+    if (collection.coordinate_system !== firstCollection.coordinate_system) {
+      throw new Error(
+        `Envelope files use mixed coordinate systems: ${firstCollection.coordinate_system} and ${collection.coordinate_system}.`
+      );
+    }
+
+    if (collection.units !== firstCollection.units) {
+      throw new Error(
+        `Envelope files use mixed units: ${firstCollection.units} and ${collection.units}.`
+      );
+    }
+  });
+
+  return {
+    version: firstCollection.version,
+    coordinate_system: firstCollection.coordinate_system,
+    units: firstCollection.units,
+    items: collections.flatMap((collection) => collection.items),
+  };
+}
 
 function fitMapToBounds(
   map: mapboxgl.Map,
@@ -48,15 +92,19 @@ function App() {
 
     const initialize = async () => {
       try {
-        const response = await fetch(SAMPLE_ENVELOPE_PATH);
-        if (!response.ok) {
-          throw new Error(`Unable to load sample JSON: ${response.status}`);
+        const blockIndex = await fetchJson<BlockIndex>(BLOCK_INDEX_PATH);
+        if (!blockIndex.blocks.length) {
+          throw new Error('Block index does not list any envelope files.');
         }
 
-        const collection =
-          (await response.json()) as ZoningEnvelopeCollection;
+        const collections = await Promise.all(
+          blockIndex.blocks.map((path) =>
+            fetchJson<ZoningEnvelopeCollection>(path)
+          )
+        );
+        const collection = mergeCollections(collections);
         if (!collection.items.length) {
-          throw new Error('Sample JSON does not contain any envelope items.');
+          throw new Error('Loaded envelope files do not contain any items.');
         }
 
         if (isCancelled) {
@@ -111,7 +159,9 @@ function App() {
         mapRef.current = map;
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Failed to load sample JSON.';
+          error instanceof Error
+            ? error.message
+            : 'Failed to load block envelope files.';
         setLoadError(message);
       }
     };
@@ -153,7 +203,7 @@ function App() {
     return (
       <div className="app-shell">
         <div className="panel">
-          <h1>Sample envelope failed to load</h1>
+          <h1>Envelope data failed to load</h1>
           <p>{loadError}</p>
         </div>
       </div>
@@ -165,13 +215,17 @@ function App() {
       <div ref={mapContainerRef} className="map-container" />
 
       <div className="panel">
-        <h1>zsf3 sample envelope</h1>
+        <h1>zsf3 block envelopes</h1>
         <p>
-          This view loads the sample envelope JSON from `public/data` into a raw
-          `three.js` custom layer.
+          This view loads block envelope files from `public/data` through a
+          manifest JSON and merges them into one `three.js` custom layer.
         </p>
         <p>
-          Current dataset: {itemCount} item, BBL {activeBbl ?? 'loading...'}.
+          Current dataset folder: {DATASET_FOLDER_PATH}.
+        </p>
+        <p>
+          Current dataset: {itemCount} items, first BBL{' '}
+          {activeBbl ?? 'loading...'}.
         </p>
         <button type="button" onClick={handleReset}>
           Reset view

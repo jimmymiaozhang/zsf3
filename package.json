@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "generate:block-index": "node ./scripts/generate-block-index.mjs",
+    "predev": "npm run generate:block-index",
     "dev": "vite",
+    "prebuild": "npm run generate:block-index",
     "build": "tsc -b && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
