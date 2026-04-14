@@ -22,7 +22,7 @@ type MapAreaProps = {
 
 const DATASET_FOLDER_PATH = '/data/test_multiple_blocks';
 const BLOCK_INDEX_PATH = `${DATASET_FOLDER_PATH}/index.json`;
-const DEFAULT_BEARING = 18;
+const DEFAULT_BEARING = 0;
 const DEFAULT_PITCH = 68;
 
 async function fetchJson<T>(path: string) {
