@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 const FEET_TO_METERS = 0.3048;
 const ENVELOPE_FILL_COLOR = 0xff3b30;
-const ENVELOPE_FILL_OPACITY = 0.1;
+const ENVELOPE_FILL_OPACITY = 0.15;
 const ENVELOPE_LINE_COLOR = 0x912739;
 const ENVELOPE_LINE_OPACITY = 0.15;
 const ENVELOPE_SELECTED_LINE_COLOR = 0xa8001d;
@@ -11,8 +11,8 @@ const ENVELOPE_SELECTED_LINE_OPACITY = 0.95;
 const ENVELOPE_HIDDEN_LINE_OPACITY = 0.1;
 const ENVELOPE_HIDDEN_LINE_DASH_SIZE = 0.5;
 const ENVELOPE_HIDDEN_LINE_GAP_SIZE = 1;
-const ENVELOPE_MIN_ZOOM = 15.5;
-const ENVELOPE_BLOCK_DISTANCE_AT_MIN_ZOOM_METERS = 160;
+const ENVELOPE_MIN_BLOCK_FOOTPRINT_PX = 120;
+const ENVELOPE_VIEWPORT_MARGIN_PX = 200;
 
 type Anchor = {
   lng: number;
@@ -356,29 +356,63 @@ export function getEnvelopeCollectionBounds(
   return new mapboxgl.LngLatBounds([minLng, minLat], [maxLng, maxLat]);
 }
 
-function getDistanceMeters(
-  a: { lng: number; lat: number },
-  b: { lng: number; lat: number }
+function getProjectedBlockFootprint(
+  map: mapboxgl.Map,
+  block: EnvelopeSceneBlock
 ) {
-  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-  const earthRadiusMeters = 6371008.8;
-  const latitudeDelta = toRadians(b.lat - a.lat);
-  const longitudeDelta = toRadians(b.lng - a.lng);
-  const latitudeA = toRadians(a.lat);
-  const latitudeB = toRadians(b.lat);
-  const haversine =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(latitudeA) *
-      Math.cos(latitudeB) *
-      Math.sin(longitudeDelta / 2) ** 2;
+  const southWest = block.bounds.getSouthWest();
+  const northEast = block.bounds.getNorthEast();
+  const northWest = { lng: southWest.lng, lat: northEast.lat };
+  const southEast = { lng: northEast.lng, lat: southWest.lat };
+  const samplePoints = [
+    southWest,
+    southEast,
+    northWest,
+    northEast,
+    block.center,
+    { lng: block.center.lng, lat: southWest.lat },
+    { lng: block.center.lng, lat: northEast.lat },
+    { lng: southWest.lng, lat: block.center.lat },
+    { lng: northEast.lng, lat: block.center.lat },
+  ].map((point) => map.project(point));
 
-  return 2 * earthRadiusMeters * Math.asin(Math.sqrt(haversine));
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  samplePoints.forEach((point) => {
+    minX = Math.min(minX, point.x);
+    maxX = Math.max(maxX, point.x);
+    minY = Math.min(minY, point.y);
+    maxY = Math.max(maxY, point.y);
+  });
+
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
 }
 
-function getVisibleDistanceForZoom(zoom: number) {
-  return (
-    ENVELOPE_BLOCK_DISTANCE_AT_MIN_ZOOM_METERS *
-    Math.pow(2, zoom - ENVELOPE_MIN_ZOOM)
+function doesProjectedFootprintOverlapViewport(
+  footprint: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  },
+  viewportWidth: number,
+  viewportHeight: number
+) {
+  return !(
+    footprint.maxX < -ENVELOPE_VIEWPORT_MARGIN_PX ||
+    footprint.minX > viewportWidth + ENVELOPE_VIEWPORT_MARGIN_PX ||
+    footprint.maxY < -ENVELOPE_VIEWPORT_MARGIN_PX ||
+    footprint.minY > viewportHeight + ENVELOPE_VIEWPORT_MARGIN_PX
   );
 }
 
@@ -424,20 +458,29 @@ export function createMercatorSceneLayer(
       return false;
     }
 
-    if (mapInstance.getZoom() < ENVELOPE_MIN_ZOOM) {
+    const activeMap = mapInstance;
+    const canvas = activeMap.getCanvas();
+    const viewportWidth = canvas.clientWidth;
+    const viewportHeight = canvas.clientHeight;
+    if (viewportWidth <= 0 || viewportHeight <= 0) {
       envelopeScene.blocks.forEach((block) => {
         block.group.visible = false;
       });
       return false;
     }
 
-    const mapCenter = mapInstance.getCenter();
-    const visibleDistanceMeters = getVisibleDistanceForZoom(mapInstance.getZoom());
     let hasVisibleBlocks = false;
 
     envelopeScene.blocks.forEach((block) => {
-      const distanceToBlockCenter = getDistanceMeters(mapCenter, block.center);
-      const isVisible = distanceToBlockCenter <= visibleDistanceMeters;
+      const footprint = getProjectedBlockFootprint(activeMap, block);
+      const overlapsViewport = doesProjectedFootprintOverlapViewport(
+        footprint,
+        viewportWidth,
+        viewportHeight
+      );
+      const footprintSize = Math.max(footprint.width, footprint.height);
+      const isVisible =
+        overlapsViewport && footprintSize >= ENVELOPE_MIN_BLOCK_FOOTPRINT_PX;
       block.group.visible = isVisible;
       hasVisibleBlocks ||= isVisible;
     });
