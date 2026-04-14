@@ -11,6 +11,8 @@ const ENVELOPE_SELECTED_LINE_OPACITY = 0.95;
 const ENVELOPE_HIDDEN_LINE_OPACITY = 0.1;
 const ENVELOPE_HIDDEN_LINE_DASH_SIZE = 0.5;
 const ENVELOPE_HIDDEN_LINE_GAP_SIZE = 1;
+const ENVELOPE_MIN_ZOOM = 15.5;
+const ENVELOPE_BLOCK_DISTANCE_AT_MIN_ZOOM_METERS = 160;
 
 type Anchor = {
   lng: number;
@@ -40,12 +42,22 @@ export type ZoningEnvelopeCollection = {
 type EnvelopeScene = {
   anchor: Anchor;
   root: THREE.Group;
+  blocks: EnvelopeSceneBlock[];
   items: EnvelopeSceneItem[];
+};
+
+type EnvelopeSceneBlock = {
+  id: string;
+  bounds: LngLatBounds;
+  center: { lng: number; lat: number };
+  group: THREE.Group;
 };
 
 type EnvelopeSceneItem = {
   id: string;
   bbl: string;
+  blockId: string;
+  blockGroup: THREE.Group;
   group: THREE.Group;
   faceMesh: THREE.Mesh | null;
   depthMesh: THREE.Mesh | null;
@@ -135,11 +147,12 @@ function setEnvelopeItemSelectedState(item: EnvelopeSceneItem, isSelected: boole
   }
 }
 
-export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
-  const unitScale = getUnitScale(collection.units);
-  const sceneAnchor = collection.items[0]?.anchor;
+export function buildEnvelopeSceneGroup(collections: ZoningEnvelopeCollection[]) {
+  const firstCollection = collections[0];
+  const sceneAnchor = firstCollection?.items[0]?.anchor;
   const group = new THREE.Group();
   group.name = 'zsf-envelope-scene';
+  const blocks: EnvelopeSceneBlock[] = [];
   const items: EnvelopeSceneItem[] = [];
 
   if (!sceneAnchor) {
@@ -152,122 +165,151 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
   );
   const sceneMeterScale = sceneMercatorAnchor.meterInMercatorCoordinateUnits();
 
-  collection.items.forEach((item) => {
-    const mercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
-      { lng: item.anchor.lng, lat: item.anchor.lat },
-      item.anchor.elevation_m ?? 0
-    );
+  collections.forEach((collection, blockIndex) => {
+    const unitScale = getUnitScale(collection.units);
+    const blockBounds = getEnvelopeCollectionBounds(collection);
+    const firstItem = collection.items[0];
+    const blockId = firstItem
+      ? `block-${firstItem.borough}-${firstItem.block}-${blockIndex}`
+      : `block-${blockIndex}`;
+    const blockCenter = blockBounds.getCenter();
+    const blockGroup = new THREE.Group();
+    blockGroup.name = blockId;
 
-    const itemGroup = new THREE.Group();
-    itemGroup.name = item.id;
-    itemGroup.position.set(
-      (mercatorAnchor.x - sceneMercatorAnchor.x) / sceneMeterScale,
-      (mercatorAnchor.y - sceneMercatorAnchor.y) / sceneMeterScale,
-      (mercatorAnchor.z - sceneMercatorAnchor.z) / sceneMeterScale
-    );
-
-    if (item.faces.length > 0) {
-      const faceGeometry = buildFaceGeometry(item.vertices_m, item.faces);
-
-      const mesh = new THREE.Mesh(
-        faceGeometry,
-        new THREE.MeshBasicMaterial({
-          color: ENVELOPE_FILL_COLOR,
-          transparent: true,
-          opacity: ENVELOPE_FILL_OPACITY,
-          depthWrite: false,
-          side: THREE.DoubleSide,
-        })
+    collection.items.forEach((item) => {
+      const mercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
+        { lng: item.anchor.lng, lat: item.anchor.lat },
+        item.anchor.elevation_m ?? 0
       );
-      mesh.scale.setScalar(unitScale);
-      mesh.renderOrder = 0;
-      itemGroup.add(mesh);
 
-      // After the visible translucent fill renders, write face depth so
-      // hidden edge lines stay occluded by nearer red surfaces.
-      const depthMesh = new THREE.Mesh(
-        faceGeometry,
-        new THREE.MeshBasicMaterial({
-          colorWrite: false,
-          depthWrite: true,
-          depthTest: true,
-          side: THREE.DoubleSide,
-        })
+      const itemGroup = new THREE.Group();
+      itemGroup.name = item.id;
+      itemGroup.position.set(
+        (mercatorAnchor.x - sceneMercatorAnchor.x) / sceneMeterScale,
+        (mercatorAnchor.y - sceneMercatorAnchor.y) / sceneMeterScale,
+        (mercatorAnchor.z - sceneMercatorAnchor.z) / sceneMeterScale
       );
-      depthMesh.scale.setScalar(unitScale);
-      depthMesh.renderOrder = 1;
-      itemGroup.add(depthMesh);
 
-      const itemRecord: EnvelopeSceneItem = {
-        id: item.id,
-        bbl: item.bbl,
-        group: itemGroup,
-        faceMesh: mesh,
-        depthMesh,
-        hiddenLines: null,
-        visibleLines: null,
-      };
-      items.push(itemRecord);
-    }
+      let itemRecord: EnvelopeSceneItem | null = null;
 
-    if (item.edges.length > 0) {
-      const edgeGeometry = buildEdgeGeometry(item.vertices_m, item.edges);
+      if (item.faces.length > 0) {
+        const faceGeometry = buildFaceGeometry(item.vertices_m, item.faces);
 
-      const hiddenLines = new THREE.LineSegments(
-        edgeGeometry,
-        new THREE.LineDashedMaterial({
-          color: ENVELOPE_LINE_COLOR,
-          transparent: true,
-          opacity: ENVELOPE_HIDDEN_LINE_OPACITY,
-          dashSize: ENVELOPE_HIDDEN_LINE_DASH_SIZE,
-          gapSize: ENVELOPE_HIDDEN_LINE_GAP_SIZE,
-          depthTest: true,
-          depthWrite: false,
-          depthFunc: THREE.GreaterDepth,
-        })
-      );
-      hiddenLines.computeLineDistances();
-      hiddenLines.scale.setScalar(unitScale);
-      hiddenLines.renderOrder = 2;
-      itemGroup.add(hiddenLines);
+        const mesh = new THREE.Mesh(
+          faceGeometry,
+          new THREE.MeshBasicMaterial({
+            color: ENVELOPE_FILL_COLOR,
+            transparent: true,
+            opacity: ENVELOPE_FILL_OPACITY,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          })
+        );
+        mesh.scale.setScalar(unitScale);
+        mesh.renderOrder = 0;
+        itemGroup.add(mesh);
 
-      const visibleLines = new THREE.LineSegments(
-        edgeGeometry,
-        new THREE.LineBasicMaterial({
-          color: ENVELOPE_LINE_COLOR,
-          transparent: true,
-          opacity: ENVELOPE_LINE_OPACITY,
-          depthTest: true,
-          depthWrite: false,
-        })
-      );
-      visibleLines.scale.setScalar(unitScale);
-      visibleLines.renderOrder = 3;
-      itemGroup.add(visibleLines);
+        // After the visible translucent fill renders, write face depth so
+        // hidden edge lines stay occluded by nearer red surfaces.
+        const depthMesh = new THREE.Mesh(
+          faceGeometry,
+          new THREE.MeshBasicMaterial({
+            colorWrite: false,
+            depthWrite: true,
+            depthTest: true,
+            side: THREE.DoubleSide,
+          })
+        );
+        depthMesh.scale.setScalar(unitScale);
+        depthMesh.renderOrder = 1;
+        itemGroup.add(depthMesh);
 
-      const existingItem = items.find((entry) => entry.id === item.id);
-      if (existingItem) {
-        existingItem.hiddenLines = hiddenLines;
-        existingItem.visibleLines = visibleLines;
-      } else {
-        items.push({
+        itemRecord = {
           id: item.id,
           bbl: item.bbl,
+          blockId,
+          blockGroup,
           group: itemGroup,
-          faceMesh: null,
-          depthMesh: null,
-          hiddenLines,
-          visibleLines,
-        });
+          faceMesh: mesh,
+          depthMesh,
+          hiddenLines: null,
+          visibleLines: null,
+        };
+        items.push(itemRecord);
       }
-    }
 
-    group.add(itemGroup);
+      if (item.edges.length > 0) {
+        const edgeGeometry = buildEdgeGeometry(item.vertices_m, item.edges);
+
+        const hiddenLines = new THREE.LineSegments(
+          edgeGeometry,
+          new THREE.LineDashedMaterial({
+            color: ENVELOPE_LINE_COLOR,
+            transparent: true,
+            opacity: ENVELOPE_HIDDEN_LINE_OPACITY,
+            dashSize: ENVELOPE_HIDDEN_LINE_DASH_SIZE,
+            gapSize: ENVELOPE_HIDDEN_LINE_GAP_SIZE,
+            depthTest: true,
+            depthWrite: false,
+            depthFunc: THREE.GreaterDepth,
+          })
+        );
+        hiddenLines.computeLineDistances();
+        hiddenLines.scale.setScalar(unitScale);
+        hiddenLines.renderOrder = 2;
+        itemGroup.add(hiddenLines);
+
+        const visibleLines = new THREE.LineSegments(
+          edgeGeometry,
+          new THREE.LineBasicMaterial({
+            color: ENVELOPE_LINE_COLOR,
+            transparent: true,
+            opacity: ENVELOPE_LINE_OPACITY,
+            depthTest: true,
+            depthWrite: false,
+          })
+        );
+        visibleLines.scale.setScalar(unitScale);
+        visibleLines.renderOrder = 3;
+        itemGroup.add(visibleLines);
+
+        if (itemRecord) {
+          itemRecord.hiddenLines = hiddenLines;
+          itemRecord.visibleLines = visibleLines;
+        } else {
+          items.push({
+            id: item.id,
+            bbl: item.bbl,
+            blockId,
+            blockGroup,
+            group: itemGroup,
+            faceMesh: null,
+            depthMesh: null,
+            hiddenLines,
+            visibleLines,
+          });
+        }
+      }
+
+      blockGroup.add(itemGroup);
+    });
+
+    blocks.push({
+      id: blockId,
+      bounds: blockBounds,
+      center: {
+        lng: blockCenter.lng,
+        lat: blockCenter.lat,
+      },
+      group: blockGroup,
+    });
+    group.add(blockGroup);
   });
 
   return {
     anchor: sceneAnchor,
     root: group,
+    blocks,
     items,
   } satisfies EnvelopeScene;
 }
@@ -314,6 +356,32 @@ export function getEnvelopeCollectionBounds(
   return new mapboxgl.LngLatBounds([minLng, minLat], [maxLng, maxLat]);
 }
 
+function getDistanceMeters(
+  a: { lng: number; lat: number },
+  b: { lng: number; lat: number }
+) {
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const earthRadiusMeters = 6371008.8;
+  const latitudeDelta = toRadians(b.lat - a.lat);
+  const longitudeDelta = toRadians(b.lng - a.lng);
+  const latitudeA = toRadians(a.lat);
+  const latitudeB = toRadians(b.lat);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(latitudeA) *
+      Math.cos(latitudeB) *
+      Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.asin(Math.sqrt(haversine));
+}
+
+function getVisibleDistanceForZoom(zoom: number) {
+  return (
+    ENVELOPE_BLOCK_DISTANCE_AT_MIN_ZOOM_METERS *
+    Math.pow(2, zoom - ENVELOPE_MIN_ZOOM)
+  );
+}
+
 export function createMercatorSceneLayer(
   id: string,
   envelopeScene: EnvelopeScene
@@ -321,6 +389,7 @@ export function createMercatorSceneLayer(
   const camera = new THREE.Camera();
   const scene = new THREE.Scene();
   scene.add(envelopeScene.root);
+  let mapInstance: mapboxgl.Map | null = null;
   const mercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
     { lng: envelopeScene.anchor.lng, lat: envelopeScene.anchor.lat },
     envelopeScene.anchor.elevation_m ?? 0
@@ -350,6 +419,32 @@ export function createMercatorSceneLayer(
     }
   });
 
+  function updateBlockVisibility() {
+    if (!mapInstance) {
+      return false;
+    }
+
+    if (mapInstance.getZoom() < ENVELOPE_MIN_ZOOM) {
+      envelopeScene.blocks.forEach((block) => {
+        block.group.visible = false;
+      });
+      return false;
+    }
+
+    const mapCenter = mapInstance.getCenter();
+    const visibleDistanceMeters = getVisibleDistanceForZoom(mapInstance.getZoom());
+    let hasVisibleBlocks = false;
+
+    envelopeScene.blocks.forEach((block) => {
+      const distanceToBlockCenter = getDistanceMeters(mapCenter, block.center);
+      const isVisible = distanceToBlockCenter <= visibleDistanceMeters;
+      block.group.visible = isVisible;
+      hasVisibleBlocks ||= isVisible;
+    });
+
+    return hasVisibleBlocks;
+  }
+
   function setSelectedItem(itemId: string | null) {
     if (selectedItemId === itemId) {
       return;
@@ -367,6 +462,11 @@ export function createMercatorSceneLayer(
     viewportWidth: number,
     viewportHeight: number
   ) {
+    const hasVisibleBlocks = updateBlockVisibility();
+    if (!hasVisibleBlocks) {
+      return null;
+    }
+
     if (!latestInverseProjectionMatrix || viewportWidth <= 0 || viewportHeight <= 0) {
       return null;
     }
@@ -387,7 +487,12 @@ export function createMercatorSceneLayer(
     raycaster.ray.origin.copy(rayNearPoint);
     raycaster.ray.direction.copy(rayDirection);
 
-    const intersections = raycaster.intersectObjects(pickTargets, false);
+    const visiblePickTargets = pickTargets.filter((mesh) => {
+      const item = pickTargetLookup.get(mesh);
+      return item?.blockGroup.visible ?? false;
+    });
+
+    const intersections = raycaster.intersectObjects(visiblePickTargets, false);
     if (!intersections.length) {
       return null;
     }
@@ -410,6 +515,7 @@ export function createMercatorSceneLayer(
     pickItemAtScreenPoint,
     setSelectedItem,
     onAdd: (map, gl) => {
+      mapInstance = map;
       renderer = new THREE.WebGLRenderer({
         canvas: map.getCanvas(),
         context: gl,
@@ -418,7 +524,11 @@ export function createMercatorSceneLayer(
       renderer.autoClear = false;
     },
     render: (_gl, matrix) => {
-      if (!renderer) {
+      if (!renderer || !mapInstance) {
+        return;
+      }
+
+      if (!updateBlockVisibility()) {
         return;
       }
 
