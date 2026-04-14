@@ -51,7 +51,6 @@ type EnvelopeSceneItem = {
   depthMesh: THREE.Mesh | null;
   hiddenLines: THREE.LineSegments | null;
   visibleLines: THREE.LineSegments | null;
-  facePositions: Float32Array | null;
 };
 
 export type PickedEnvelope = {
@@ -136,28 +135,6 @@ function setEnvelopeItemSelectedState(item: EnvelopeSceneItem, isSelected: boole
   }
 }
 
-function isPointInTriangle(
-  px: number,
-  py: number,
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-  cx: number,
-  cy: number
-) {
-  const denominator = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
-  if (Math.abs(denominator) < 1e-9) {
-    return false;
-  }
-
-  const alpha = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / denominator;
-  const beta = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / denominator;
-  const gamma = 1 - alpha - beta;
-
-  return alpha >= 0 && beta >= 0 && gamma >= 0;
-}
-
 export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
   const unitScale = getUnitScale(collection.units);
   const sceneAnchor = collection.items[0]?.anchor;
@@ -229,7 +206,6 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
         depthMesh,
         hiddenLines: null,
         visibleLines: null,
-        facePositions: faceGeometry.attributes.position.array as Float32Array,
       };
       items.push(itemRecord);
     }
@@ -282,7 +258,6 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
           depthMesh: null,
           hiddenLines,
           visibleLines,
-          facePositions: null,
         });
       }
     }
@@ -358,11 +333,22 @@ export function createMercatorSceneLayer(
   };
 
   let renderer: THREE.WebGLRenderer | null = null;
-  let latestProjectionMatrix: THREE.Matrix4 | null = null;
+  let latestInverseProjectionMatrix: THREE.Matrix4 | null = null;
   let selectedItemId: string | null = null;
-  const projectedA = new THREE.Vector3();
-  const projectedB = new THREE.Vector3();
-  const projectedC = new THREE.Vector3();
+  const raycaster = new THREE.Raycaster();
+  const rayNearPoint = new THREE.Vector3();
+  const rayFarPoint = new THREE.Vector3();
+  const rayDirection = new THREE.Vector3();
+  const pickTargets = envelopeScene.items
+    .map((item) => item.faceMesh)
+    .filter((mesh): mesh is THREE.Mesh => mesh !== null);
+  const pickTargetLookup = new Map<THREE.Object3D, EnvelopeSceneItem>();
+
+  envelopeScene.items.forEach((item) => {
+    if (item.faceMesh) {
+      pickTargetLookup.set(item.faceMesh, item);
+    }
+  });
 
   function setSelectedItem(itemId: string | null) {
     if (selectedItemId === itemId) {
@@ -375,118 +361,46 @@ export function createMercatorSceneLayer(
     });
   }
 
-  function projectToScreen(
-    x: number,
-    y: number,
-    z: number,
-    matrixWorld: THREE.Matrix4,
-    projectionMatrix: THREE.Matrix4,
-    viewportWidth: number,
-    viewportHeight: number,
-    target: THREE.Vector3
-  ) {
-    target.set(x, y, z).applyMatrix4(matrixWorld).applyMatrix4(projectionMatrix);
-
-    if (
-      !Number.isFinite(target.x) ||
-      !Number.isFinite(target.y) ||
-      !Number.isFinite(target.z)
-    ) {
-      return false;
-    }
-
-    target.x = (target.x * 0.5 + 0.5) * viewportWidth;
-    target.y = (-target.y * 0.5 + 0.5) * viewportHeight;
-    return true;
-  }
-
   function pickItemAtScreenPoint(
     x: number,
     y: number,
     viewportWidth: number,
     viewportHeight: number
   ) {
-    if (!latestProjectionMatrix) {
+    if (!latestInverseProjectionMatrix || viewportWidth <= 0 || viewportHeight <= 0) {
       return null;
     }
 
     envelopeScene.root.updateMatrixWorld(true);
 
-        let bestHit: PickedEnvelope | null = null;
-    let bestDepth = Infinity;
+    const normalizedX = (x / viewportWidth) * 2 - 1;
+    const normalizedY = -(y / viewportHeight) * 2 + 1;
 
-    for (const item of envelopeScene.items) {
-      if (!item.faceMesh || !item.facePositions) {
-        continue;
-      }
+    rayNearPoint
+      .set(normalizedX, normalizedY, -1)
+      .applyMatrix4(latestInverseProjectionMatrix);
+    rayFarPoint
+      .set(normalizedX, normalizedY, 1)
+      .applyMatrix4(latestInverseProjectionMatrix);
 
-      const matrixWorld = item.faceMesh.matrixWorld;
-      const positions = item.facePositions;
+    rayDirection.copy(rayFarPoint).sub(rayNearPoint).normalize();
+    raycaster.ray.origin.copy(rayNearPoint);
+    raycaster.ray.direction.copy(rayDirection);
 
-      for (let index = 0; index < positions.length; index += 9) {
-        const hasA = projectToScreen(
-          positions[index],
-          positions[index + 1],
-          positions[index + 2],
-          matrixWorld,
-          latestProjectionMatrix,
-          viewportWidth,
-          viewportHeight,
-          projectedA
-        );
-        const hasB = projectToScreen(
-          positions[index + 3],
-          positions[index + 4],
-          positions[index + 5],
-          matrixWorld,
-          latestProjectionMatrix,
-          viewportWidth,
-          viewportHeight,
-          projectedB
-        );
-        const hasC = projectToScreen(
-          positions[index + 6],
-          positions[index + 7],
-          positions[index + 8],
-          matrixWorld,
-          latestProjectionMatrix,
-          viewportWidth,
-          viewportHeight,
-          projectedC
-        );
-
-        if (!hasA || !hasB || !hasC) {
-          continue;
-        }
-
-        if (
-          !isPointInTriangle(
-            x,
-            y,
-            projectedA.x,
-            projectedA.y,
-            projectedB.x,
-            projectedB.y,
-            projectedC.x,
-            projectedC.y
-          )
-        ) {
-          continue;
-        }
-
-        const depth =
-          (projectedA.z + projectedB.z + projectedC.z) / 3;
-        if (depth < bestDepth) {
-          bestDepth = depth;
-          bestHit = {
-            id: item.id,
-            bbl: item.bbl,
-          };
-        }
-      }
+    const intersections = raycaster.intersectObjects(pickTargets, false);
+    if (!intersections.length) {
+      return null;
     }
 
-    return bestHit;
+    const hitItem = pickTargetLookup.get(intersections[0].object);
+    if (!hitItem) {
+      return null;
+    }
+
+    return {
+      id: hitItem.id,
+      bbl: hitItem.bbl,
+    };
   }
 
   return {
@@ -524,7 +438,7 @@ export function createMercatorSceneLayer(
         );
 
       camera.projectionMatrix = projectionMatrix.multiply(modelMatrix);
-      latestProjectionMatrix = camera.projectionMatrix.clone();
+      latestInverseProjectionMatrix = camera.projectionMatrix.clone().invert();
       renderer.resetState();
       renderer.render(scene, camera);
     },
