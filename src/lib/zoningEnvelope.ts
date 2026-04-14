@@ -3,10 +3,12 @@ import * as THREE from 'three';
 
 const FEET_TO_METERS = 0.3048;
 const ENVELOPE_FILL_COLOR = 0xff3b30;
-const ENVELOPE_FILL_OPACITY = 0.18;
+const ENVELOPE_FILL_OPACITY = 0.1;
 const ENVELOPE_LINE_COLOR = 0x912739;
-const ENVELOPE_LINE_OPACITY = 0.5;
-const ENVELOPE_HIDDEN_LINE_OPACITY = 0.1;
+const ENVELOPE_LINE_OPACITY = 0.3;
+const ENVELOPE_SELECTED_LINE_COLOR = 0xa8001d;
+const ENVELOPE_SELECTED_LINE_OPACITY = 0.95;
+const ENVELOPE_HIDDEN_LINE_OPACITY = 0.09;
 const ENVELOPE_HIDDEN_LINE_DASH_SIZE = 0.5;
 const ENVELOPE_HIDDEN_LINE_GAP_SIZE = 1;
 
@@ -38,6 +40,33 @@ export type ZoningEnvelopeCollection = {
 type EnvelopeScene = {
   anchor: Anchor;
   root: THREE.Group;
+  items: EnvelopeSceneItem[];
+};
+
+type EnvelopeSceneItem = {
+  id: string;
+  bbl: string;
+  group: THREE.Group;
+  faceMesh: THREE.Mesh | null;
+  depthMesh: THREE.Mesh | null;
+  hiddenLines: THREE.LineSegments | null;
+  visibleLines: THREE.LineSegments | null;
+  facePositions: Float32Array | null;
+};
+
+export type PickedEnvelope = {
+  id: string;
+  bbl: string;
+};
+
+export type EnvelopeSceneLayer = CustomLayerInterface & {
+  pickItemAtScreenPoint: (
+    x: number,
+    y: number,
+    viewportWidth: number,
+    viewportHeight: number
+  ) => PickedEnvelope | null;
+  setSelectedItem: (itemId: string | null) => void;
 };
 
 function getUnitScale(units: ZoningEnvelopeCollection['units']) {
@@ -84,11 +113,57 @@ function buildEdgeGeometry(
   return geometry;
 }
 
+function setEnvelopeItemSelectedState(item: EnvelopeSceneItem, isSelected: boolean) {
+  if (item.depthMesh) {
+    item.depthMesh.visible = !isSelected;
+  }
+
+  if (item.hiddenLines) {
+    item.hiddenLines.visible = !isSelected;
+  }
+
+  if (item.visibleLines) {
+    const material = item.visibleLines.material as THREE.LineBasicMaterial;
+    material.depthTest = !isSelected;
+    material.color.setHex(
+      isSelected ? ENVELOPE_SELECTED_LINE_COLOR : ENVELOPE_LINE_COLOR
+    );
+    material.opacity = isSelected
+      ? ENVELOPE_SELECTED_LINE_OPACITY
+      : ENVELOPE_LINE_OPACITY;
+    material.needsUpdate = true;
+    item.visibleLines.renderOrder = isSelected ? 4 : 3;
+  }
+}
+
+function isPointInTriangle(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number
+) {
+  const denominator = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+  if (Math.abs(denominator) < 1e-9) {
+    return false;
+  }
+
+  const alpha = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / denominator;
+  const beta = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / denominator;
+  const gamma = 1 - alpha - beta;
+
+  return alpha >= 0 && beta >= 0 && gamma >= 0;
+}
+
 export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
   const unitScale = getUnitScale(collection.units);
   const sceneAnchor = collection.items[0]?.anchor;
   const group = new THREE.Group();
   group.name = 'zsf-envelope-scene';
+  const items: EnvelopeSceneItem[] = [];
 
   if (!sceneAnchor) {
     throw new Error('Envelope collection does not contain any items.');
@@ -145,6 +220,18 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
       depthMesh.scale.setScalar(unitScale);
       depthMesh.renderOrder = 1;
       itemGroup.add(depthMesh);
+
+      const itemRecord: EnvelopeSceneItem = {
+        id: item.id,
+        bbl: item.bbl,
+        group: itemGroup,
+        faceMesh: mesh,
+        depthMesh,
+        hiddenLines: null,
+        visibleLines: null,
+        facePositions: faceGeometry.attributes.position.array as Float32Array,
+      };
+      items.push(itemRecord);
     }
 
     if (item.edges.length > 0) {
@@ -181,6 +268,23 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
       visibleLines.scale.setScalar(unitScale);
       visibleLines.renderOrder = 3;
       itemGroup.add(visibleLines);
+
+      const existingItem = items.find((entry) => entry.id === item.id);
+      if (existingItem) {
+        existingItem.hiddenLines = hiddenLines;
+        existingItem.visibleLines = visibleLines;
+      } else {
+        items.push({
+          id: item.id,
+          bbl: item.bbl,
+          group: itemGroup,
+          faceMesh: null,
+          depthMesh: null,
+          hiddenLines,
+          visibleLines,
+          facePositions: null,
+        });
+      }
     }
 
     group.add(itemGroup);
@@ -189,6 +293,7 @@ export function buildEnvelopeSceneGroup(collection: ZoningEnvelopeCollection) {
   return {
     anchor: sceneAnchor,
     root: group,
+    items,
   } satisfies EnvelopeScene;
 }
 
@@ -236,15 +341,14 @@ export function getEnvelopeCollectionBounds(
 
 export function createMercatorSceneLayer(
   id: string,
-  root: THREE.Object3D,
-  anchor: Anchor
-): CustomLayerInterface {
+  envelopeScene: EnvelopeScene
+): EnvelopeSceneLayer {
   const camera = new THREE.Camera();
   const scene = new THREE.Scene();
-  scene.add(root);
+  scene.add(envelopeScene.root);
   const mercatorAnchor = mapboxgl.MercatorCoordinate.fromLngLat(
-    { lng: anchor.lng, lat: anchor.lat },
-    anchor.elevation_m ?? 0
+    { lng: envelopeScene.anchor.lng, lat: envelopeScene.anchor.lat },
+    envelopeScene.anchor.elevation_m ?? 0
   );
   const modelTransform = {
     translateX: mercatorAnchor.x,
@@ -254,11 +358,143 @@ export function createMercatorSceneLayer(
   };
 
   let renderer: THREE.WebGLRenderer | null = null;
+  let latestProjectionMatrix: THREE.Matrix4 | null = null;
+  let selectedItemId: string | null = null;
+  const projectedA = new THREE.Vector3();
+  const projectedB = new THREE.Vector3();
+  const projectedC = new THREE.Vector3();
+
+  function setSelectedItem(itemId: string | null) {
+    if (selectedItemId === itemId) {
+      return;
+    }
+
+    selectedItemId = itemId;
+    envelopeScene.items.forEach((item) => {
+      setEnvelopeItemSelectedState(item, item.id === itemId);
+    });
+  }
+
+  function projectToScreen(
+    x: number,
+    y: number,
+    z: number,
+    matrixWorld: THREE.Matrix4,
+    projectionMatrix: THREE.Matrix4,
+    viewportWidth: number,
+    viewportHeight: number,
+    target: THREE.Vector3
+  ) {
+    target.set(x, y, z).applyMatrix4(matrixWorld).applyMatrix4(projectionMatrix);
+
+    if (
+      !Number.isFinite(target.x) ||
+      !Number.isFinite(target.y) ||
+      !Number.isFinite(target.z)
+    ) {
+      return false;
+    }
+
+    target.x = (target.x * 0.5 + 0.5) * viewportWidth;
+    target.y = (-target.y * 0.5 + 0.5) * viewportHeight;
+    return true;
+  }
+
+  function pickItemAtScreenPoint(
+    x: number,
+    y: number,
+    viewportWidth: number,
+    viewportHeight: number
+  ) {
+    if (!latestProjectionMatrix) {
+      return null;
+    }
+
+    envelopeScene.root.updateMatrixWorld(true);
+
+        let bestHit: PickedEnvelope | null = null;
+    let bestDepth = Infinity;
+
+    for (const item of envelopeScene.items) {
+      if (!item.faceMesh || !item.facePositions) {
+        continue;
+      }
+
+      const matrixWorld = item.faceMesh.matrixWorld;
+      const positions = item.facePositions;
+
+      for (let index = 0; index < positions.length; index += 9) {
+        const hasA = projectToScreen(
+          positions[index],
+          positions[index + 1],
+          positions[index + 2],
+          matrixWorld,
+          latestProjectionMatrix,
+          viewportWidth,
+          viewportHeight,
+          projectedA
+        );
+        const hasB = projectToScreen(
+          positions[index + 3],
+          positions[index + 4],
+          positions[index + 5],
+          matrixWorld,
+          latestProjectionMatrix,
+          viewportWidth,
+          viewportHeight,
+          projectedB
+        );
+        const hasC = projectToScreen(
+          positions[index + 6],
+          positions[index + 7],
+          positions[index + 8],
+          matrixWorld,
+          latestProjectionMatrix,
+          viewportWidth,
+          viewportHeight,
+          projectedC
+        );
+
+        if (!hasA || !hasB || !hasC) {
+          continue;
+        }
+
+        if (
+          !isPointInTriangle(
+            x,
+            y,
+            projectedA.x,
+            projectedA.y,
+            projectedB.x,
+            projectedB.y,
+            projectedC.x,
+            projectedC.y
+          )
+        ) {
+          continue;
+        }
+
+        const depth =
+          (projectedA.z + projectedB.z + projectedC.z) / 3;
+        if (depth < bestDepth) {
+          bestDepth = depth;
+          bestHit = {
+            id: item.id,
+            bbl: item.bbl,
+          };
+        }
+      }
+    }
+
+    return bestHit;
+  }
 
   return {
     id,
     type: 'custom',
     renderingMode: '3d',
+    pickItemAtScreenPoint,
+    setSelectedItem,
     onAdd: (map, gl) => {
       renderer = new THREE.WebGLRenderer({
         canvas: map.getCanvas(),
@@ -288,10 +524,11 @@ export function createMercatorSceneLayer(
         );
 
       camera.projectionMatrix = projectionMatrix.multiply(modelMatrix);
+      latestProjectionMatrix = camera.projectionMatrix.clone();
       renderer.resetState();
       renderer.render(scene, camera);
     },
-  };
+  } satisfies EnvelopeSceneLayer;
 }
 
 export function disposeThreeObject(object: THREE.Object3D) {
