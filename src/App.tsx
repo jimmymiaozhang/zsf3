@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import './App.css';
 import Navbar from './components/Navbar';
 import SidebarLeft from './components/SidebarLeft';
 import SidebarRight from './components/SidebarRight';
 import MapArea from './components/MapArea';
+import type { LotSelectionState } from './lib/lotZoningRequirements';
 
 export type MapLayerId =
   | 'zoningMap'
@@ -30,6 +31,12 @@ function App() {
     landmarkIconLabels: false,
     show3dObjects: true,
   });
+  const [lotSelection, setLotSelection] = useState<LotSelectionState>({
+    activeBbl: null,
+    lotRequirements: null,
+    lotRequirementsLoading: false,
+    lotRequirementsError: null,
+  });
 
   const handleToggleLayer = (layerId: MapLayerId) => {
     setMapLayers((current) => ({
@@ -37,6 +44,10 @@ function App() {
       [layerId]: !current[layerId],
     }));
   };
+
+  const handleLotSelectionChange = useCallback((next: LotSelectionState) => {
+    setLotSelection(next);
+  }, []);
 
   return (
     <div className="app-shell">
@@ -52,12 +63,18 @@ function App() {
           leftSidebarVisible={leftSidebarVisible}
           rightSidebarVisible={rightSidebarVisible}
           mapLayers={mapLayers}
+          activeBbl={lotSelection.activeBbl}
+          onLotSelectionChange={handleLotSelectionChange}
           onToggleLeft={() => setLeftSidebarVisible((visible) => !visible)}
           onToggleRight={() => setRightSidebarVisible((visible) => !visible)}
         />
         <SidebarRight
           isVisible={rightSidebarVisible}
           onHide={() => setRightSidebarVisible(false)}
+          activeBbl={lotSelection.activeBbl}
+          lotRequirements={lotSelection.lotRequirements}
+          lotRequirementsLoading={lotSelection.lotRequirementsLoading}
+          lotRequirementsError={lotSelection.lotRequirementsError}
         />
       </div>
     </div>

@@ -14,15 +14,19 @@ import {
   fetchZoningDistricts,
   setZoningVisibility,
 } from '../lib/zoningMaps';
-
-type BlockIndex = {
-  blocks: string[];
-};
+import type {
+  DatasetIndex,
+  LotRequirementsIndex,
+  LotSelectionState,
+  LotZoningRequirements,
+} from '../lib/lotZoningRequirements';
 
 type MapAreaProps = {
   leftSidebarVisible: boolean;
   rightSidebarVisible: boolean;
   mapLayers: MapLayerVisibilityState;
+  activeBbl: string | null;
+  onLotSelectionChange: (next: LotSelectionState) => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
 };
@@ -162,6 +166,8 @@ function MapArea({
   leftSidebarVisible,
   rightSidebarVisible,
   mapLayers,
+  activeBbl,
+  onLotSelectionChange,
   onToggleLeft,
   onToggleRight,
 }: MapAreaProps) {
@@ -170,11 +176,13 @@ function MapArea({
   const dataBoundsRef = useRef<mapboxgl.LngLatBounds | null>(null);
   const mapLayersRef = useRef(mapLayers);
   const envelopeLayerRef = useRef<EnvelopeSceneLayer | null>(null);
+  const lotRequirementsIndexRef = useRef<LotRequirementsIndex>({});
+  const lotRequirementsCacheRef = useRef<Record<string, LotZoningRequirements>>({});
+  const lotSelectionRequestRef = useRef(0);
   const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim();
   const [loadError, setLoadError] = useState<string | null>(null);
   const [zoningLoadError, setZoningLoadError] = useState<string | null>(null);
   const [itemCount, setItemCount] = useState(0);
-  const [activeBbl, setActiveBbl] = useState<string | null>(null);
   const [mapBearing, setMapBearing] = useState(DEFAULT_BEARING);
 
   useEffect(() => {
@@ -204,10 +212,11 @@ function MapArea({
 
     const initialize = async () => {
       try {
-        const blockIndex = await fetchJson<BlockIndex>(BLOCK_INDEX_PATH);
+        const blockIndex = await fetchJson<DatasetIndex>(BLOCK_INDEX_PATH);
         if (!blockIndex.blocks.length) {
           throw new Error('Block index does not list any envelope files.');
         }
+        lotRequirementsIndexRef.current = blockIndex.lotZoningRequirements ?? {};
 
         const collections = await Promise.all(
           blockIndex.blocks.map((path) =>
@@ -225,12 +234,76 @@ function MapArea({
 
         setLoadError(null);
         setItemCount(collection.items.length);
-        setActiveBbl(collection.items[0].bbl);
 
         const bounds = getEnvelopeCollectionBounds(collection);
         dataBoundsRef.current = bounds;
         envelopeRoot = buildEnvelopeSceneGroup(collections);
         const defaultBbl = collection.items[0].bbl;
+
+        const loadLotRequirementsForBbl = async (bbl: string) => {
+          const requestId = ++lotSelectionRequestRef.current;
+          const cached = lotRequirementsCacheRef.current[bbl];
+          if (cached) {
+            onLotSelectionChange({
+              activeBbl: bbl,
+              lotRequirements: cached,
+              lotRequirementsLoading: false,
+              lotRequirementsError: null,
+            });
+            return;
+          }
+
+          const requirementsPath = lotRequirementsIndexRef.current[bbl];
+          if (!requirementsPath) {
+            onLotSelectionChange({
+              activeBbl: bbl,
+              lotRequirements: null,
+              lotRequirementsLoading: false,
+              lotRequirementsError: 'No zoning requirements file found for this lot.',
+            });
+            return;
+          }
+
+          onLotSelectionChange({
+            activeBbl: bbl,
+            lotRequirements: null,
+            lotRequirementsLoading: true,
+            lotRequirementsError: null,
+          });
+
+          try {
+            const lotRequirements = await fetchJson<LotZoningRequirements>(
+              requirementsPath
+            );
+            if (isCancelled || requestId !== lotSelectionRequestRef.current) {
+              return;
+            }
+
+            lotRequirementsCacheRef.current[bbl] = lotRequirements;
+            onLotSelectionChange({
+              activeBbl: bbl,
+              lotRequirements,
+              lotRequirementsLoading: false,
+              lotRequirementsError: null,
+            });
+          } catch (error) {
+            if (isCancelled || requestId !== lotSelectionRequestRef.current) {
+              return;
+            }
+
+            onLotSelectionChange({
+              activeBbl: bbl,
+              lotRequirements: null,
+              lotRequirementsLoading: false,
+              lotRequirementsError:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to load zoning requirements.',
+            });
+          }
+        };
+
+        void loadLotRequirementsForBbl(defaultBbl);
 
         mapboxgl.accessToken = token;
 
@@ -330,8 +403,9 @@ function MapArea({
             map.getCanvas().clientHeight
           );
 
+          const nextBbl = pickedEnvelope?.bbl ?? defaultBbl;
           envelopeLayer.setSelectedItem(pickedEnvelope?.id ?? null);
-          setActiveBbl(pickedEnvelope?.bbl ?? defaultBbl);
+          void loadLotRequirementsForBbl(nextBbl);
         };
 
         const handleMouseLeave = () => {
@@ -384,7 +458,7 @@ function MapArea({
       mapRef.current = null;
       dataBoundsRef.current = null;
     };
-  }, [token]);
+  }, [token, onLotSelectionChange]);
 
   const handleReset = () => {
     if (mapRef.current && dataBoundsRef.current) {

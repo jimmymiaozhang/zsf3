@@ -4,6 +4,7 @@ import path from 'node:path';
 const projectRoot = process.cwd();
 const dataRoot = path.join(projectRoot, 'public', 'data');
 const blockFilePattern = /^block_.*_envelopes\.json$/i;
+const lotRequirementsPattern = /^(\d+)_.*\.json$/i;
 
 async function collectDirectories(rootDirectory) {
   const directories = [rootDirectory];
@@ -38,10 +39,38 @@ async function writeIndexForDirectory(directoryPath) {
     return false;
   }
 
+  const lotZoningRequirements = {};
+  const directories = await collectDirectories(directoryPath);
+
+  for (const currentDirectory of directories) {
+    const childEntries = await fs.readdir(currentDirectory, { withFileTypes: true });
+
+    for (const entry of childEntries) {
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      const match = entry.name.match(lotRequirementsPattern);
+      if (!match) {
+        continue;
+      }
+
+      const bbl = match[1];
+      if (!bbl) {
+        continue;
+      }
+
+      lotZoningRequirements[bbl] = toPublicUrl(
+        path.join(currentDirectory, entry.name)
+      );
+    }
+  }
+
   const indexPath = path.join(directoryPath, 'index.json');
   const indexContents = JSON.stringify(
     {
       blocks: blockFiles.map(toPublicUrl),
+      lotZoningRequirements,
     },
     null,
     2

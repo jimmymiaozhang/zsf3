@@ -1,0 +1,254 @@
+================================================================================
+ASSEMBLY LOG - Lot 3026830032 - Model: gpt_4o_mini
+================================================================================
+
+Total fields: 48
+Fields written: 24
+Fields null: 24
+Fields error: 0
+Coverage: 50.0%
+
+================================================================================
+DETAILED LOG
+================================================================================
+
+Field: applies_to_geometry_ids.0
+  Status: null
+  Source: None
+  Value: None
+
+Field: bulk_far.by_use.commercial.base_far
+  Status: written
+  Source: lookup
+  Value: 2.0
+
+Field: bulk_far.by_use.commercial.max_far
+  Status: written
+  Source: lookup
+  Value: 2.0
+
+Field: bulk_far.by_use.commercial.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: bulk_far.by_use.community_facility.base_far
+  Status: written
+  Source: lookup
+  Value: 2.0
+
+Field: bulk_far.by_use.community_facility.max_far
+  Status: written
+  Source: lookup
+  Value: 2.0
+
+Field: bulk_far.by_use.community_facility.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: bulk_far.by_use.residential.base_far
+  Status: written
+  Source: lookup
+  Value: 2.0
+
+Field: bulk_far.by_use.residential.max_far
+  Status: written
+  Source: lookup
+  Value: 2.0
+
+Field: bulk_far.by_use.residential.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: bulk_far.max_permitted_floor_area.all_uses
+  Status: written
+  Source: derived
+  Value: 3664
+
+Field: bulk_far.max_permitted_floor_area.commercial
+  Status: written
+  Source: derived
+  Value: 3664
+
+Field: bulk_far.max_permitted_floor_area.community_facility
+  Status: written
+  Source: derived
+  Value: 3664
+
+Field: bulk_far.max_permitted_floor_area.residential
+  Status: written
+  Source: derived
+  Value: 3664
+
+Field: height_and_setback.narrow_street.max_base_height
+  Status: written
+  Source: lookup
+  Value: 40.0
+
+Field: height_and_setback.narrow_street.max_building_height
+  Status: written
+  Source: lookup
+  Value: 40.0
+
+Field: height_and_setback.narrow_street.min_base_height
+  Status: written
+  Source: lookup
+  Value: 30.0
+
+Field: height_and_setback.narrow_street.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: height_and_setback.narrow_street.setback
+  Status: written
+  Source: lookup
+  Value: 10.0
+
+Field: height_and_setback.street_wall.required
+  Status: written
+  Source: lookup
+  Value: 0
+
+Field: height_and_setback.wide_street.max_base_height
+  Status: written
+  Source: lookup
+  Value: 50.0
+
+Field: height_and_setback.wide_street.max_building_height
+  Status: written
+  Source: lookup
+  Value: 50.0
+
+Field: height_and_setback.wide_street.min_base_height
+  Status: written
+  Source: lookup
+  Value: 30.0
+
+Field: height_and_setback.wide_street.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: height_and_setback.wide_street.setback
+  Status: written
+  Source: lookup
+  Value: 10.0
+
+Field: id
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.lot_coverage.community_facility_corner_lot_percent
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.lot_coverage.community_facility_interior_lot_percent
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.lot_coverage.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.lot_coverage.residential_corner_lot_percent
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.lot_coverage.residential_interior_lot_percent
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.open_space.required
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.yards.front_yard.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.yards.front_yard.required
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.yards.rear_yard.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.yards.rear_yard.required
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.yards.side_yard.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: lot_coverage_and_yards.yards.side_yard.required
+  Status: null
+  Source: None
+  Value: None
+
+Field: parking_and_loading.commercial_parking.required
+  Status: written
+  Source: lookup
+  Value: 0.0005
+
+Field: parking_and_loading.community_facility_parking.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: parking_and_loading.community_facility_parking.required
+  Status: written
+  Source: lookup
+  Value: 0.0025
+
+Field: parking_and_loading.loading_berths.required
+  Status: null
+  Source: lookup
+  Value: None
+
+Field: parking_and_loading.residential_parking.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: parking_and_loading.residential_parking.required
+  Status: written
+  Source: lookup
+  Value: 1
+
+Field: parking_and_loading.residential_parking.within_manhattan_core
+  Status: written
+  Source: lookup
+  Value: 0.0
+
+Field: residential_density.max_dwelling_units
+  Status: null
+  Source: derived
+  Value: None
+
+Field: residential_density.notes
+  Status: null
+  Source: None
+  Value: None
+
+Field: residential_density.residential_density_factor
+  Status: written
+  Source: lookup
+  Value: 1.0
+
