@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
+import type { MapLayerVisibilityState } from '../App';
 import {
   buildEnvelopeSceneGroup,
   createMercatorSceneLayer,
@@ -8,6 +9,11 @@ import {
   type EnvelopeSceneLayer,
   type ZoningEnvelopeCollection,
 } from '../lib/zoningEnvelope';
+import {
+  addZoningLayers,
+  fetchZoningDistricts,
+  setZoningVisibility,
+} from '../lib/zoningMaps';
 
 type BlockIndex = {
   blocks: string[];
@@ -16,6 +22,7 @@ type BlockIndex = {
 type MapAreaProps = {
   leftSidebarVisible: boolean;
   rightSidebarVisible: boolean;
+  mapLayers: MapLayerVisibilityState;
   onToggleLeft: () => void;
   onToggleRight: () => void;
 };
@@ -24,6 +31,26 @@ const DATASET_FOLDER_PATH = '/data/test_multiple_blocks';
 const BLOCK_INDEX_PATH = `${DATASET_FOLDER_PATH}/index.json`;
 const DEFAULT_BEARING = 0;
 const DEFAULT_PITCH = 68;
+
+function applyBasemapLayerVisibility(
+  map: mapboxgl.Map,
+  mapLayers: MapLayerVisibilityState
+) {
+  map.setConfigProperty(
+    'basemap',
+    'showPointOfInterestLabels',
+    mapLayers.poiLabels
+  );
+  map.setConfigProperty('basemap', 'showTransitLabels', mapLayers.transitLabels);
+  map.setConfigProperty(
+    'basemap',
+    'showLandmarkIconLabels',
+    mapLayers.landmarkIconLabels
+  );
+  map.setConfigProperty('basemap', 'showRoadLabels', mapLayers.roadLabels);
+  map.setConfigProperty('basemap', 'showPlaceLabels', mapLayers.placeLabels);
+  map.setConfigProperty('basemap', 'show3dObjects', mapLayers.show3dObjects);
+}
 
 async function fetchJson<T>(path: string) {
   const response = await fetch(path);
@@ -82,20 +109,35 @@ function fitMapToBounds(
 function MapArea({
   leftSidebarVisible,
   rightSidebarVisible,
+  mapLayers,
   onToggleLeft,
   onToggleRight,
 }: MapAreaProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const dataBoundsRef = useRef<mapboxgl.LngLatBounds | null>(null);
+  const mapLayersRef = useRef(mapLayers);
+  const envelopeLayerRef = useRef<EnvelopeSceneLayer | null>(null);
   const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim();
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [zoningLoadError, setZoningLoadError] = useState<string | null>(null);
   const [itemCount, setItemCount] = useState(0);
   const [activeBbl, setActiveBbl] = useState<string | null>(null);
 
   useEffect(() => {
     mapRef.current?.resize();
   }, [leftSidebarVisible, rightSidebarVisible]);
+
+  useEffect(() => {
+    mapLayersRef.current = mapLayers;
+
+    if (mapRef.current?.isStyleLoaded()) {
+      applyBasemapLayerVisibility(mapRef.current, mapLayers);
+      setZoningVisibility(mapRef.current, mapLayers.zoningMap);
+    }
+
+    envelopeLayerRef.current?.setVisible(mapLayers.zoningEnvelopes);
+  }, [mapLayers]);
 
   useEffect(() => {
     if (!mapContainerRef.current || !token) {
@@ -158,23 +200,49 @@ function MapArea({
           'sample-envelope-layer',
           envelopeRoot
         );
+        envelopeLayer.setVisible(mapLayersRef.current.zoningEnvelopes);
+        envelopeLayerRef.current = envelopeLayer;
 
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
         map.on('style.load', () => {
-          map?.setConfigProperty(
-            'basemap',
-            'showPointOfInterestLabels',
-            false
-          );
-          map?.setConfigProperty('basemap', 'showTransitLabels', false);
-          map?.setConfigProperty('basemap', 'showLandmarkIconLabels', false);
-          map?.setConfigProperty('basemap', 'showRoadLabels', true);
-          map?.setConfigProperty('basemap', 'showPlaceLabels', true);
+          const syncLayersWithStyle = async () => {
+            if (!map) {
+              return;
+            }
 
-          if (map && !map.getLayer('sample-envelope-layer')) {
-            map.addLayer(envelopeLayer);
+            try {
+              const zoningData = await fetchZoningDistricts();
+              if (isCancelled || !map) {
+                return;
+              }
+
+              addZoningLayers(
+                map,
+                zoningData,
+                mapLayersRef.current.zoningMap
+              );
+              setZoningLoadError(null);
+            } catch (error) {
+              if (!isCancelled) {
+                setZoningLoadError(
+                  error instanceof Error
+                    ? error.message
+                    : 'Failed to load zoning overlay.'
+                );
+              }
+            }
+
+            if (map && !map.getLayer('sample-envelope-layer')) {
+              map.addLayer(envelopeLayer);
+            }
+          };
+
+          if (map) {
+            applyBasemapLayerVisibility(map, mapLayersRef.current);
           }
+
+          void syncLayersWithStyle();
         });
 
         map.on('load', () => {
@@ -250,6 +318,7 @@ function MapArea({
       if (envelopeRoot) {
         disposeThreeObject(envelopeRoot.root);
       }
+      envelopeLayerRef.current = null;
       mapRef.current = null;
       dataBoundsRef.current = null;
     };
@@ -318,6 +387,9 @@ function MapArea({
             Current dataset: {itemCount} items, selected BBL{' '}
             {activeBbl ?? 'loading...'}.
           </p>
+          {zoningLoadError ? (
+            <p>Zoning overlay unavailable: {zoningLoadError}</p>
+          ) : null}
         </div>
       </div>
     </main>

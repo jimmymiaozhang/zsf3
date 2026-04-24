@@ -78,6 +78,7 @@ export type EnvelopeSceneLayer = CustomLayerInterface & {
     viewportHeight: number
   ) => PickedEnvelope | null;
   setSelectedItem: (itemId: string | null) => void;
+  setVisible: (visible: boolean) => void;
 };
 
 function getUnitScale(units: ZoningEnvelopeCollection['units']) {
@@ -438,6 +439,7 @@ export function createMercatorSceneLayer(
   let renderer: THREE.WebGLRenderer | null = null;
   let latestInverseProjectionMatrix: THREE.Matrix4 | null = null;
   let selectedItemId: string | null = null;
+  let layerVisible = true;
   const raycaster = new THREE.Raycaster();
   const rayNearPoint = new THREE.Vector3();
   const rayFarPoint = new THREE.Vector3();
@@ -454,7 +456,10 @@ export function createMercatorSceneLayer(
   });
 
   function updateBlockVisibility() {
-    if (!mapInstance) {
+    if (!mapInstance || !layerVisible) {
+      envelopeScene.blocks.forEach((block) => {
+        block.group.visible = false;
+      });
       return false;
     }
 
@@ -497,6 +502,18 @@ export function createMercatorSceneLayer(
     envelopeScene.items.forEach((item) => {
       setEnvelopeItemSelectedState(item, item.id === itemId);
     });
+  }
+
+  function setVisible(visible: boolean) {
+    layerVisible = visible;
+
+    if (!visible) {
+      envelopeScene.blocks.forEach((block) => {
+        block.group.visible = false;
+      });
+    }
+
+    mapInstance?.triggerRepaint();
   }
 
   function pickItemAtScreenPoint(
@@ -557,6 +574,7 @@ export function createMercatorSceneLayer(
     renderingMode: '3d',
     pickItemAtScreenPoint,
     setSelectedItem,
+    setVisible,
     onAdd: (map, gl) => {
       mapInstance = map;
       renderer = new THREE.WebGLRenderer({
