@@ -146,23 +146,55 @@
   color: #374151;
 }
 
-.status-pill {
+.layer-switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.78rem;
-  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
 }
 
-.status-pill.success {
-  background: #dcfce7;
-  color: #15803d;
+.layer-switch:hover {
+  transform: translateY(-1px);
 }
 
-.status-pill.warning {
-  background: #fef3c7;
-  color: #b45309;
+.layer-switch:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 0.95),
+    0 0 0 4px rgb(71 85 105 / 0.28);
+}
+
+.layer-switch.is-on {
+  background: linear-gradient(135deg, #4b5563, #6b7280);
+}
+
+.layer-switch.is-off {
+  background: #d1d5db;
+}
+
+.layer-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.18),
+    0 4px 10px rgb(15 23 42 / 0.08);
+  transition: transform 140ms ease;
+}
+
+.layer-switch.is-on .layer-switch__thumb {
+  transform: translateX(18px);
 }
 
 .map-panel {

@@ -1,14 +1,27 @@
+import type { MapLayerId, MapLayerVisibilityState } from '../App';
+
 type SidebarLeftProps = {
   isVisible: boolean;
+  mapLayers: MapLayerVisibilityState;
+  onToggleLayer: (layerId: MapLayerId) => void;
 };
 
-const layerRows = [
-  { name: 'Zoning Envelopes', status: 'Active' },
-  { name: 'Road Labels', status: 'Visible' },
-  { name: 'Neighborhood Labels', status: 'Visible' },
+const layerRows: Array<{ id: MapLayerId; name: string }> = [
+  { id: 'zoningMap', name: 'Zoning Map' },
+  { id: 'zoningEnvelopes', name: 'Zoning Envelopes' },
+  { id: 'placeLabels', name: 'Place Labels' },
+  { id: 'roadLabels', name: 'Road Labels' },
+  { id: 'transitLabels', name: 'Transit Labels' },
+  { id: 'poiLabels', name: 'Point of Interest Labels' },
+  { id: 'landmarkIconLabels', name: 'Landmark Icon Labels' },
+  { id: 'show3dObjects', name: '3D Buildings / 3D Objects' },
 ];
 
-function SidebarLeft({ isVisible }: SidebarLeftProps) {
+function SidebarLeft({
+  isVisible,
+  mapLayers,
+  onToggleLayer,
+}: SidebarLeftProps) {
   return (
     <aside
       className={`sidebar sidebar-left ${isVisible ? 'open' : 'closed'}`}
@@ -34,7 +47,19 @@ function SidebarLeft({ isVisible }: SidebarLeftProps) {
               {layerRows.map((layer) => (
                 <li key={layer.name} className="sidebar-row">
                   <span>{layer.name}</span>
-                  <span className="status-pill">{layer.status}</span>
+                  <button
+                    className={`layer-switch ${
+                      mapLayers[layer.id] ? 'is-on' : 'is-off'
+                    }`.trim()}
+                    type="button"
+                    onClick={() => onToggleLayer(layer.id)}
+                    aria-pressed={mapLayers[layer.id]}
+                    aria-label={`${layer.name} ${
+                      mapLayers[layer.id] ? 'on' : 'off'
+                    }`}
+                  >
+                    <span className="layer-switch__thumb" />
+                  </button>
                 </li>
               ))}
             </ul>
