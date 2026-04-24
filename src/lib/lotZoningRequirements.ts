@@ -39,6 +39,7 @@ export type LotZoningRequirements = {
     lot_lines?: Array<{
       lot_line_type: string | null;
       street_type: string | null;
+      street_name: string | null;
       calculated_length: number | null;
     }>;
   };

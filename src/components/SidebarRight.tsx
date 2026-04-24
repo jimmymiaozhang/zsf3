@@ -3,6 +3,7 @@ import {
   getApplicableCodes,
   type LotZoningRequirements,
 } from '../lib/lotZoningRequirements';
+import type { ReactNode } from 'react';
 
 type SidebarRightProps = {
   isVisible: boolean;
@@ -23,8 +24,15 @@ function SidebarRight({
 }: SidebarRightProps) {
   const metadata = lotRequirements?.metadata;
   const legalLotArea = lotRequirements?.spatial_data?.lot_area?.legal?.area;
-  const calculatedLotArea =
-    lotRequirements?.spatial_data?.lot_area?.calculated?.area;
+  const existingFloorArea = metadata?.existing_floor_area;
+  const existingFar =
+    existingFloorArea !== null &&
+    existingFloorArea !== undefined &&
+    legalLotArea !== null &&
+    legalLotArea !== undefined &&
+    legalLotArea > 0
+      ? existingFloorArea / legalLotArea
+      : null;
   const frontages = (lotRequirements?.spatial_data?.lot_lines ?? [])
     .filter((line) => line.lot_line_type === 'front')
     .map((line) =>
@@ -60,6 +68,16 @@ function SidebarRight({
   const wideStreet = scenario?.height_and_setback?.wide_street;
   const parking = scenario?.parking_and_loading;
   const density = scenario?.residential_density;
+  const hasSelection = Boolean(activeBbl);
+  const selectedLotMessage = lotRequirementsLoading
+    ? `Loading zoning requirements for ${activeBbl}...`
+    : lotRequirementsError
+      ? lotRequirementsError
+      : !hasSelection
+        ? 'Select a zoning envelope to inspect the lot-level zoning requirements.'
+        : !lotRequirements || !metadata
+          ? 'No zoning requirements loaded for the selected lot.'
+          : null;
 
   return (
     <aside
@@ -96,62 +114,63 @@ function SidebarRight({
               requirements JSON associated with that BBL.
             </p>
 
-            {lotRequirementsLoading ? (
-              <p className="muted">Loading zoning requirements for {activeBbl}...</p>
-            ) : lotRequirementsError ? (
-              <p className="muted">{lotRequirementsError}</p>
-            ) : !lotRequirements || !metadata ? (
-              <p className="muted">
-                No lot requirements loaded yet. Select an envelope on the map to
-                populate this panel.
-              </p>
-            ) : (
-              <div className="sidebar-data-grid">
-                <InfoRow label="Address" value={metadata.lot_address} />
-                <InfoRow label="BBL" value={String(metadata.bbl)} mono />
-                <InfoRow
-                  label="Block / Lot"
-                  value={`${metadata.block} / ${metadata.lot}`}
-                />
-                <InfoRow
-                  label="Zoning Map"
-                  value={metadata.zoning_map ?? 'N/A'}
-                />
-                <InfoRow
-                  label="Community District"
-                  value={String(metadata.community_district ?? 'N/A')}
-                />
-                <InfoRow
-                  label="Existing Floor Area"
-                  value={
-                    metadata.existing_floor_area !== null
-                      ? `${formatNumber(metadata.existing_floor_area)} sf`
-                      : 'N/A'
-                  }
-                />
-                <InfoRow
-                  label="Legal Lot Area"
-                  value={
-                    legalLotArea !== null && legalLotArea !== undefined
-                      ? `${formatNumber(legalLotArea)} sf`
-                      : 'N/A'
-                  }
-                />
-                <InfoRow
-                  label="Calculated Lot Area"
-                  value={
-                    calculatedLotArea !== null &&
-                    calculatedLotArea !== undefined
-                      ? `${formatNumber(calculatedLotArea, 1)} sf`
-                      : 'N/A'
-                  }
-                />
-                <InfoRow
-                  label="Frontages"
-                  value={frontages.length ? frontages.join(', ') : 'N/A'}
-                />
-              </div>
-            )}
+            {selectedLotMessage ? <p className="muted">{selectedLotMessage}</p> : null}
+
+            <div className="sidebar-data-grid">
+              <InfoRow label="Address" value={metadata?.lot_address ?? 'N/A'} />
+              <InfoRow
+                label="BBL"
+                value={metadata ? String(metadata.bbl) : 'N/A'}
+              />
+              <InfoRow
+                label="Block / Lot"
+                value={
+                  metadata ? `${metadata.block} / ${metadata.lot}` : 'N/A'
+                }
+              />
+              <InfoRow
+                label="Zoning Map"
+                value={metadata?.zoning_map ?? 'N/A'}
+              />
+              <InfoRow
+                label="Community District"
+                value={metadata ? String(metadata.community_district ?? 'N/A') : 'N/A'}
+              />
+              <InfoRow
+                label="Existing Floor Area"
+                value={
+                  existingFloorArea !== null && existingFloorArea !== undefined
+                    ? `${formatNumber(existingFloorArea)} sf`
+                    : 'N/A'
+                }
+              />
+              <InfoRow
+                label="Legal Lot Area"
+                value={
+                  legalLotArea !== null && legalLotArea !== undefined
+                    ? `${formatNumber(legalLotArea)} sf`
+                    : 'N/A'
+                }
+              />
+              <InfoRow
+                label="Existing FAR"
+                value={formatNumber(existingFar, 2)}
+              />
+              <InfoRow
+                label="Frontages"
+                value={
+                  frontages.length ? (
+                    <span className="sidebar-data-row__stack">
+                      {frontages.map((frontage) => (
+                        <span key={frontage}>{frontage}</span>
+                      ))}
+                    </span>
+                  ) : (
+                    'N/A'
+                  )
+                }
+              />
+            </div>
           </section>
 
           <section className="sidebar-section">
@@ -160,22 +179,18 @@ function SidebarRight({
               <InfoRow
                 label="Primary Districts"
                 value={primaryDistricts.join(', ') || 'N/A'}
-                mono
               />
               <InfoRow
                 label="Commercial Overlays"
                 value={commercialOverlays.join(', ') || 'None'}
-                mono
               />
               <InfoRow
                 label="Special Districts"
                 value={specialDistricts.join(', ') || 'None'}
-                mono
               />
               <InfoRow
                 label="Historic Districts"
                 value={historicDistricts.join(', ') || 'None'}
-                mono
               />
             </div>
           </section>
@@ -283,7 +298,7 @@ function InfoRow({
   mono = false,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   mono?: boolean;
 }) {
   return (
