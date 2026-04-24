@@ -24,6 +24,7 @@ export type LotZoningRequirements = {
     zoning_map: string | null;
     community_district: string | number | null;
     existing_floor_area: number | null;
+    lot_type?: number | string | null;
     current_use: string | null;
     nyc_designated_landmark: string | null;
   };
@@ -65,10 +66,14 @@ export type LotZoningRequirements = {
     };
     height_and_setback?: {
       narrow_street?: {
+        min_base_height?: number | null;
+        max_base_height?: number | null;
         max_building_height?: number | null;
         setback?: number | null;
       };
       wide_street?: {
+        min_base_height?: number | null;
+        max_base_height?: number | null;
         max_building_height?: number | null;
         setback?: number | null;
       };

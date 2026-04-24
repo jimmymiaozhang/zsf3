@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 import mapboxgl from 'mapbox-gl';
-import type { MapLayerVisibilityState } from '../App';
+import type { MapDataStatus, MapLayerVisibilityState } from '../App';
 import {
   buildEnvelopeSceneGroup,
   createMercatorSceneLayer,
@@ -32,8 +32,8 @@ type MapAreaProps = {
   leftSidebarVisible: boolean;
   rightSidebarVisible: boolean;
   mapLayers: MapLayerVisibilityState;
-  activeBbl: string | null;
   onLotSelectionChange: (next: LotSelectionState) => void;
+  onMapDataStatusChange: (next: MapDataStatus) => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
 };
@@ -42,6 +42,8 @@ const DATASET_FOLDER_PATH = '/data/test_multiple_blocks';
 const BLOCK_INDEX_PATH = `${DATASET_FOLDER_PATH}/index.json`;
 const DEFAULT_BEARING = 0;
 const DEFAULT_PITCH = 68;
+const LEFT_SIDEBAR_WIDTH = 320;
+const RIGHT_SIDEBAR_WIDTH = 480;
 
 function applyBasemapLayerVisibility(
   map: mapboxgl.Map,
@@ -173,8 +175,8 @@ function MapArea({
   leftSidebarVisible,
   rightSidebarVisible,
   mapLayers,
-  activeBbl,
   onLotSelectionChange,
+  onMapDataStatusChange,
   onToggleLeft,
   onToggleRight,
 }: MapAreaProps) {
@@ -195,10 +197,16 @@ function MapArea({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [zoningLoadError, setZoningLoadError] = useState<string | null>(null);
   const [itemCount, setItemCount] = useState(0);
+  const [envelopeDataLoading, setEnvelopeDataLoading] = useState(true);
+  const [zoningDataLoading, setZoningDataLoading] = useState(true);
   const [mapBearing, setMapBearing] = useState(DEFAULT_BEARING);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  const floatingControlsOffset =
+    ((leftSidebarVisible ? LEFT_SIDEBAR_WIDTH : 0) -
+      (rightSidebarVisible ? RIGHT_SIDEBAR_WIDTH : 0)) /
+    2;
 
   const clearSelectedLot = useCallback(() => {
     envelopeLayerRef.current?.setSelectedItem(null);
@@ -226,6 +234,20 @@ function MapArea({
   }, [mapLayers]);
 
   useEffect(() => {
+    onMapDataStatusChange({
+      itemCount,
+      zoningLoadError,
+      isDataLoading: envelopeDataLoading || zoningDataLoading,
+    });
+  }, [
+    itemCount,
+    zoningLoadError,
+    envelopeDataLoading,
+    zoningDataLoading,
+    onMapDataStatusChange,
+  ]);
+
+  useEffect(() => {
     if (!mapContainerRef.current || !token) {
       return;
     }
@@ -237,6 +259,8 @@ function MapArea({
 
     const initialize = async () => {
       try {
+        setEnvelopeDataLoading(true);
+        setZoningDataLoading(true);
         const blockIndex = await fetchJson<DatasetIndex>(BLOCK_INDEX_PATH);
         if (!blockIndex.blocks.length) {
           throw new Error('Block index does not list any envelope files.');
@@ -259,6 +283,7 @@ function MapArea({
 
         setLoadError(null);
         setItemCount(collection.items.length);
+        setEnvelopeDataLoading(false);
 
         const bounds = getEnvelopeCollectionBounds(collection);
         dataBoundsRef.current = bounds;
@@ -358,6 +383,7 @@ function MapArea({
             }
 
             try {
+              setZoningDataLoading(true);
               const zoningData = await fetchZoningDistricts();
               if (isCancelled || !map) {
                 return;
@@ -369,6 +395,7 @@ function MapArea({
                 mapLayersRef.current.zoningMap
               );
               setZoningLoadError(null);
+              setZoningDataLoading(false);
             } catch (error) {
               if (!isCancelled) {
                 setZoningLoadError(
@@ -376,6 +403,7 @@ function MapArea({
                     ? error.message
                     : 'Failed to load zoning overlay.'
                 );
+                setZoningDataLoading(false);
               }
             }
 
@@ -468,6 +496,8 @@ function MapArea({
             ? error.message
             : 'Failed to load block envelope files.';
         setLoadError(message);
+        setEnvelopeDataLoading(false);
+        setZoningDataLoading(false);
       }
     };
 
@@ -643,7 +673,10 @@ function MapArea({
           </div>
         ) : null}
 
-        <div className="map-floating-controls">
+        <div
+          className="map-floating-controls"
+          style={{ left: `calc(50% + ${floatingControlsOffset}px)` }}
+        >
           <form className="map-search" onSubmit={handleSearchSubmit}>
             <input
               ref={searchInputRef}
@@ -758,18 +791,16 @@ function MapArea({
           </div>
         ) : null}
 
-        <div className="map-overlay map-overlay--info">
-          <h2>zsf3 block envelopes</h2>
-          <p>Dataset folder: {DATASET_FOLDER_PATH}</p>
-          <p>
-            Current dataset: {itemCount} items, selected BBL{' '}
-            {activeBbl ?? 'loading...'}.
-          </p>
-          {zoningLoadError ? (
-            <p>Zoning overlay unavailable: {zoningLoadError}</p>
-          ) : null}
-          {searchError ? <p>Search: {searchError}</p> : null}
-        </div>
+        {envelopeDataLoading || zoningDataLoading ? (
+          <div className="map-loading-overlay" aria-live="polite">
+            Data Loading...
+          </div>
+        ) : null}
+        {searchError ? (
+          <div className="map-overlay map-overlay--search-error">
+            <p>Search: {searchError}</p>
+          </div>
+        ) : null}
       </div>
     </main>
   );

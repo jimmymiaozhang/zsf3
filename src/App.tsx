@@ -1,10 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import './App.css';
 import Navbar from './components/Navbar';
 import SidebarLeft from './components/SidebarLeft';
 import SidebarRight from './components/SidebarRight';
 import MapArea from './components/MapArea';
 import type { LotSelectionState } from './lib/lotZoningRequirements';
+
+const DATASET_FOLDER_PATH = '/data/test_multiple_blocks';
 
 export type MapLayerId =
   | 'zoningMap'
@@ -18,9 +20,15 @@ export type MapLayerId =
 
 export type MapLayerVisibilityState = Record<MapLayerId, boolean>;
 
+export type MapDataStatus = {
+  itemCount: number;
+  zoningLoadError: string | null;
+  isDataLoading: boolean;
+};
+
 function App() {
-  const [leftSidebarVisible, setLeftSidebarVisible] = useState(true);
-  const [rightSidebarVisible, setRightSidebarVisible] = useState(true);
+  const [leftSidebarVisible, setLeftSidebarVisible] = useState(false);
+  const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
   const [mapLayers, setMapLayers] = useState<MapLayerVisibilityState>({
     zoningMap: true,
     zoningEnvelopes: true,
@@ -37,6 +45,12 @@ function App() {
     lotRequirementsLoading: false,
     lotRequirementsError: null,
   });
+  const [mapDataStatus, setMapDataStatus] = useState<MapDataStatus>({
+    itemCount: 0,
+    zoningLoadError: null,
+    isDataLoading: true,
+  });
+  const hasAutoOpenedSidebarsRef = useRef(false);
 
   const handleToggleLayer = (layerId: MapLayerId) => {
     setMapLayers((current) => ({
@@ -49,6 +63,20 @@ function App() {
     setLotSelection(next);
   }, []);
 
+  const handleMapDataStatusChange = useCallback((next: MapDataStatus) => {
+    setMapDataStatus(next);
+  }, []);
+
+  useEffect(() => {
+    if (mapDataStatus.isDataLoading || hasAutoOpenedSidebarsRef.current) {
+      return;
+    }
+
+    setLeftSidebarVisible(true);
+    setRightSidebarVisible(true);
+    hasAutoOpenedSidebarsRef.current = true;
+  }, [mapDataStatus.isDataLoading]);
+
   return (
     <div className="app-shell">
       <Navbar />
@@ -56,6 +84,10 @@ function App() {
         <SidebarLeft
           isVisible={leftSidebarVisible}
           mapLayers={mapLayers}
+          datasetFolder={DATASET_FOLDER_PATH}
+          itemCount={mapDataStatus.itemCount}
+          activeBbl={lotSelection.activeBbl}
+          zoningLoadError={mapDataStatus.zoningLoadError}
           onToggleLayer={handleToggleLayer}
           onHide={() => setLeftSidebarVisible(false)}
         />
@@ -63,8 +95,8 @@ function App() {
           leftSidebarVisible={leftSidebarVisible}
           rightSidebarVisible={rightSidebarVisible}
           mapLayers={mapLayers}
-          activeBbl={lotSelection.activeBbl}
           onLotSelectionChange={handleLotSelectionChange}
+          onMapDataStatusChange={handleMapDataStatusChange}
           onToggleLeft={() => setLeftSidebarVisible((visible) => !visible)}
           onToggleRight={() => setRightSidebarVisible((visible) => !visible)}
         />
