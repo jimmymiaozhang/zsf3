@@ -44,7 +44,7 @@
   bottom: 0;
   z-index: 5;
   width: 320px;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: none;
   transition:
     transform 0.3s ease,
@@ -88,6 +88,64 @@
   background: rgb(255 255 255 / 0.5);
   backdrop-filter: blur(12px);
   box-shadow: 0 18px 38px rgb(15 23 42 / 0.16);
+}
+
+.sidebar-handle {
+  position: absolute;
+  top: 16px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgb(148 163 184 / 0.35);
+  background: rgb(255 255 255 / 0.92);
+  color: #374151;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgb(15 23 42 / 0.08);
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+.sidebar-handle:hover {
+  background: rgb(255 255 255 / 0.98);
+  box-shadow: 0 8px 18px rgb(15 23 42 / 0.12);
+  transform: translateY(-1px);
+}
+
+.sidebar-handle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 0.95),
+    0 0 0 4px rgb(71 85 105 / 0.22),
+    0 8px 18px rgb(15 23 42 / 0.12);
+}
+
+.sidebar-handle svg {
+  width: 24px;
+  height: 24px;
+}
+
+.sidebar-handle path {
+  fill: none;
+  stroke: #374151;
+  stroke-width: 2.05;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sidebar-handle--left {
+  right: -19px;
+  border-radius: 12px;
+}
+
+.sidebar-handle--right {
+  left: -19px;
+  border-radius: 12px;
 }
 
 .sidebar-toolbar {
@@ -220,6 +278,7 @@
   width: 38px;
   height: 38px;
   min-width: 38px;
+  padding: 0;
   border-radius: 12px;
   transition:
     transform 140ms ease,
@@ -242,18 +301,14 @@
 }
 
 .map-toggle__icon {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
 }
 
-.map-toggle__rail {
-  fill: #9ca3af;
-}
-
-.map-toggle__chevron {
+.map-toggle__menu-line {
   fill: none;
   stroke: #374151;
-  stroke-width: 1.75;
+  stroke-width: 2.05;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -314,9 +369,6 @@
   height: 38px;
   padding: 0;
   flex: 0 0 38px;
-  font-size: 1.4rem;
-  font-weight: 600;
-  line-height: 1;
 }
 
 .map-control-button:hover {
@@ -345,10 +397,35 @@
 }
 
 .map-control-button__compass {
-  width: 24px;
-  height: 24px;
-  fill: #374151;
+  width: 27px;
+  height: 27px;
   transition: transform 160ms ease;
+}
+
+.map-control-button__glyph {
+  width: 22px;
+  height: 22px;
+}
+
+.map-control-button__glyph path {
+  fill: none;
+  stroke: #374151;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+}
+
+.map-control-button__compass-top {
+  fill: #374151;
+  stroke: #374151;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.map-control-button__compass-bottom {
+  fill: none;
+  stroke: #374151;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
 }
 
 .map-canvas {
