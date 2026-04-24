@@ -408,10 +408,7 @@
 }
 
 .map-search:focus-within {
-  box-shadow:
-    0 0 0 2px rgb(255 255 255 / 0.95),
-    0 0 0 4px rgb(71 85 105 / 0.22),
-    0 8px 18px rgb(15 23 42 / 0.12);
+  box-shadow: 0 4px 12px rgb(15 23 42 / 0.08);
 }
 
 .map-search__input {
@@ -422,6 +419,7 @@
   padding: 0 12px;
   color: #1f2937;
   font-size: 0.9rem;
+  appearance: none;
 }
 
 .map-search__input:focus {
@@ -432,6 +430,7 @@
   color: #6b7280;
 }
 
+.map-search__clear,
 .map-search__button {
   display: inline-flex;
   align-items: center;
@@ -443,13 +442,30 @@
   border-left: 1px solid rgb(148 163 184 / 0.22);
   background: transparent;
   color: #374151;
+  padding: 0;
   transition:
     background-color 140ms ease,
     opacity 140ms ease;
 }
 
+.map-search__clear {
+  border: none;
+}
+
+.map-search__clear--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.map-search__clear:hover,
 .map-search__button:hover:not(:disabled) {
   background: rgb(255 255 255 / 0.96);
+}
+
+.map-search__clear svg,
+.map-search__button svg {
+  width: 22px;
+  height: 22px;
 }
 
 .map-search__button:disabled {
@@ -457,16 +473,23 @@
   cursor: wait;
 }
 
-.map-search__button svg {
-  width: 18px;
-  height: 18px;
-}
-
-.map-search__button circle,
-.map-search__button path {
+.map-search__clear path {
   fill: none;
   stroke: #374151;
-  stroke-width: 1.8;
+  stroke-width: 2.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.map-search__icon {
+  width: 26px;
+  height: 26px;
+}
+
+.map-search__icon path {
+  fill: none;
+  stroke: #374151;
+  stroke-width: 2.35;
   stroke-linecap: round;
   stroke-linejoin: round;
 }

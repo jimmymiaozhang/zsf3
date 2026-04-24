@@ -1,4 +1,11 @@
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { MapLayerVisibilityState } from '../App';
 import {
@@ -172,13 +179,18 @@ function MapArea({
   onToggleRight,
 }: MapAreaProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const dataBoundsRef = useRef<mapboxgl.LngLatBounds | null>(null);
   const mapLayersRef = useRef(mapLayers);
   const envelopeLayerRef = useRef<EnvelopeSceneLayer | null>(null);
+  const loadLotRequirementsForBblRef = useRef<((bbl: string) => Promise<void>) | null>(
+    null
+  );
   const lotRequirementsIndexRef = useRef<LotRequirementsIndex>({});
   const lotRequirementsCacheRef = useRef<Record<string, LotZoningRequirements>>({});
   const lotSelectionRequestRef = useRef(0);
+  const searchRequestRef = useRef(0);
   const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim();
   const [loadError, setLoadError] = useState<string | null>(null);
   const [zoningLoadError, setZoningLoadError] = useState<string | null>(null);
@@ -187,6 +199,16 @@ function MapArea({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+
+  const clearSelectedLot = useCallback(() => {
+    envelopeLayerRef.current?.setSelectedItem(null);
+    onLotSelectionChange({
+      activeBbl: null,
+      lotRequirements: null,
+      lotRequirementsLoading: false,
+      lotRequirementsError: null,
+    });
+  }, [onLotSelectionChange]);
 
   useEffect(() => {
     mapRef.current?.resize();
@@ -303,6 +325,7 @@ function MapArea({
             });
           }
         };
+        loadLotRequirementsForBblRef.current = loadLotRequirementsForBbl;
 
         mapboxgl.accessToken = token;
 
@@ -404,12 +427,7 @@ function MapArea({
 
           envelopeLayer.setSelectedItem(pickedEnvelope?.id ?? null);
           if (!pickedEnvelope?.bbl) {
-            onLotSelectionChange({
-              activeBbl: null,
-              lotRequirements: null,
-              lotRequirementsLoading: false,
-              lotRequirementsError: null,
-            });
+            clearSelectedLot();
             return;
           }
 
@@ -462,11 +480,12 @@ function MapArea({
       if (envelopeRoot) {
         disposeThreeObject(envelopeRoot.root);
       }
+      loadLotRequirementsForBblRef.current = null;
       envelopeLayerRef.current = null;
       mapRef.current = null;
       dataBoundsRef.current = null;
     };
-  }, [token, onLotSelectionChange]);
+  }, [token, onLotSelectionChange, clearSelectedLot]);
 
   const handleReset = () => {
     if (mapRef.current && dataBoundsRef.current) {
@@ -509,6 +528,7 @@ function MapArea({
 
     setSearching(true);
     setSearchError(null);
+    const searchRequestId = ++searchRequestRef.current;
 
     try {
       const center = mapRef.current.getCenter();
@@ -543,6 +563,38 @@ function MapArea({
         center: nextCenter,
         zoom: Math.max(mapRef.current.getZoom(), 17),
         duration: 900,
+      });
+
+      mapRef.current.once('moveend', () => {
+        if (searchRequestId !== searchRequestRef.current) {
+          return;
+        }
+
+        const activeMap = mapRef.current;
+        const envelopeLayer = envelopeLayerRef.current;
+        const loadLotRequirementsForBbl = loadLotRequirementsForBblRef.current;
+        if (!activeMap || !envelopeLayer || !loadLotRequirementsForBbl) {
+          return;
+        }
+
+        const projectedPoint = activeMap.project({
+          lng: nextCenter[0],
+          lat: nextCenter[1],
+        });
+        const pickedEnvelope = envelopeLayer.pickItemAtScreenPoint(
+          projectedPoint.x,
+          projectedPoint.y,
+          activeMap.getCanvas().clientWidth,
+          activeMap.getCanvas().clientHeight
+        );
+
+        envelopeLayer.setSelectedItem(pickedEnvelope?.id ?? null);
+        if (!pickedEnvelope?.bbl) {
+          clearSelectedLot();
+          return;
+        }
+
+        void loadLotRequirementsForBbl(pickedEnvelope.bbl);
       });
     } catch (error) {
       setSearchError(
@@ -594,13 +646,32 @@ function MapArea({
         <div className="map-floating-controls">
           <form className="map-search" onSubmit={handleSearchSubmit}>
             <input
+              ref={searchInputRef}
               className="map-search__input"
-              type="search"
+              type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search address"
               aria-label="Search address"
             />
+            <button
+              className={`map-search__clear ${searchQuery ? '' : 'map-search__clear--hidden'}`.trim()}
+              type="button"
+              aria-label="Clear search"
+              title="Clear search"
+              aria-hidden={!searchQuery}
+              tabIndex={searchQuery ? 0 : -1}
+              onClick={() => {
+                setSearchQuery('');
+                setSearchError(null);
+                searchInputRef.current?.focus();
+              }}
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M6 6L14 14" />
+                <path d="M14 6L6 14" />
+              </svg>
+            </button>
             <button
               className="map-search__button"
               type="submit"
@@ -608,9 +679,13 @@ function MapArea({
               title="Search address"
               disabled={searching}
             >
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <circle cx="9" cy="9" r="4.75" />
-                <path d="M12.7 12.7L16 16" />
+              <svg
+                className="map-search__icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M10.25 4.25A6 6 0 1 1 6 6a6 6 0 0 1 4.25-1.75Z" />
+                <path d="M14.75 14.75L20 20" />
               </svg>
             </button>
           </form>
