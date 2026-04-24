@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { MapLayerVisibilityState } from '../App';
 import {
@@ -106,6 +106,81 @@ function fitMapToBounds(
   });
 }
 
+function SidebarToggleButton({
+  side,
+  isVisible,
+  onClick,
+}: {
+  side: 'left' | 'right';
+  isVisible: boolean;
+  onClick: () => void;
+}) {
+  const railX = side === 'left' ? 3 : 15;
+  const chevronPath =
+    side === 'left'
+      ? isVisible
+        ? 'M12 6L8 9L12 12'
+        : 'M8 6L12 9L8 12'
+      : isVisible
+        ? 'M8 6L12 9L8 12'
+        : 'M12 6L8 9L12 12';
+
+  return (
+    <button
+      className="map-toggle map-toggle--icon"
+      type="button"
+      onClick={onClick}
+      aria-label={`${isVisible ? 'Hide' : 'Show'} ${side} sidebar`}
+      title={`${isVisible ? 'Hide' : 'Show'} ${side} sidebar`}
+    >
+      <svg
+        className="map-toggle__icon"
+        viewBox="0 0 18 18"
+        aria-hidden="true"
+      >
+        <rect
+          x={railX}
+          y="3"
+          width="2"
+          height="12"
+          rx="1"
+          className="map-toggle__rail"
+        />
+        <path
+          d={chevronPath}
+          className="map-toggle__chevron"
+        />
+      </svg>
+    </button>
+  );
+}
+
+function MapControlButton({
+  ariaLabel,
+  title,
+  onClick,
+  children,
+  className = '',
+}: {
+  ariaLabel: string;
+  title: string;
+  onClick: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      className={`map-control-button ${className}`.trim()}
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 function MapArea({
   leftSidebarVisible,
   rightSidebarVisible,
@@ -123,6 +198,7 @@ function MapArea({
   const [zoningLoadError, setZoningLoadError] = useState<string | null>(null);
   const [itemCount, setItemCount] = useState(0);
   const [activeBbl, setActiveBbl] = useState<string | null>(null);
+  const [mapBearing, setMapBearing] = useState(DEFAULT_BEARING);
 
   useEffect(() => {
     mapRef.current?.resize();
@@ -203,8 +279,6 @@ function MapArea({
         envelopeLayer.setVisible(mapLayersRef.current.zoningEnvelopes);
         envelopeLayerRef.current = envelopeLayer;
 
-        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
         map.on('style.load', () => {
           const syncLayersWithStyle = async () => {
             if (!map) {
@@ -248,6 +322,7 @@ function MapArea({
         map.on('load', () => {
           if (map && dataBoundsRef.current) {
             fitMapToBounds(map, dataBoundsRef.current, 0);
+            setMapBearing(map.getBearing());
           }
         });
 
@@ -290,12 +365,22 @@ function MapArea({
           map.getCanvas().style.cursor = '';
         };
 
+        const handleRotate = () => {
+          if (!map) {
+            return;
+          }
+
+          setMapBearing(map.getBearing());
+        };
+
         map.on('mousemove', handleMouseMove);
         map.on('click', handleClick);
+        map.on('rotate', handleRotate);
         map.getCanvas().addEventListener('mouseleave', handleMouseLeave);
         cleanupInteraction = () => {
           map?.off('mousemove', handleMouseMove);
           map?.off('click', handleClick);
+          map?.off('rotate', handleRotate);
           map?.getCanvas().removeEventListener('mouseleave', handleMouseLeave);
         };
 
@@ -330,6 +415,25 @@ function MapArea({
     }
   };
 
+  const handleZoomIn = () => {
+    mapRef.current?.zoomIn({ duration: 250 });
+  };
+
+  const handleZoomOut = () => {
+    mapRef.current?.zoomOut({ duration: 250 });
+  };
+
+  const handleResetNorth = () => {
+    if (!mapRef.current) {
+      return;
+    }
+
+    mapRef.current.easeTo({
+      bearing: DEFAULT_BEARING,
+      duration: 400,
+    });
+  };
+
   if (!token) {
     return (
       <main className="map-panel">
@@ -357,30 +461,68 @@ function MapArea({
 
   return (
     <main className="map-panel">
-      <div className="map-toolbar">
-        <div className="toolbar-group toolbar-group--left">
-          <button className="map-toggle" type="button" onClick={onToggleLeft}>
-            {leftSidebarVisible ? 'Hide Left' : 'Show Left'}
-          </button>
-        </div>
-
-        <div className="toolbar-group toolbar-group--center">
-          <button type="button" onClick={handleReset}>
-            Reset View
-          </button>
-        </div>
-
-        <div className="toolbar-group toolbar-group--right">
-          <button className="map-toggle" type="button" onClick={onToggleRight}>
-            {rightSidebarVisible ? 'Hide Right' : 'Show Right'}
-          </button>
-        </div>
-      </div>
-
       <div className="map-stage">
         <div ref={mapContainerRef} className="map-canvas" />
 
-        <div className="map-overlay">
+        <div className="map-map-corner map-map-corner--left">
+          <SidebarToggleButton
+            side="left"
+            isVisible={leftSidebarVisible}
+            onClick={onToggleLeft}
+          />
+        </div>
+
+        <div className="map-floating-controls">
+          <MapControlButton
+            ariaLabel="Reset map view"
+            title="Reset view"
+            onClick={handleReset}
+            className="map-control-button--label"
+          >
+            Reset View
+          </MapControlButton>
+          <MapControlButton
+            ariaLabel="Zoom in"
+            title="Zoom in"
+            onClick={handleZoomIn}
+            className="map-control-button--icon"
+          >
+            +
+          </MapControlButton>
+          <MapControlButton
+            ariaLabel="Zoom out"
+            title="Zoom out"
+            onClick={handleZoomOut}
+            className="map-control-button--icon"
+          >
+            -
+          </MapControlButton>
+          <MapControlButton
+            ariaLabel="Reset map north"
+            title="Reset north"
+            onClick={handleResetNorth}
+            className="map-control-button--icon map-control-button--compass"
+          >
+            <svg
+              className="map-control-button__compass"
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+              style={{ transform: `rotate(${-mapBearing}deg)` }}
+            >
+              <path d="M10 2L13.4 11H10.9L10 18L9.1 11H6.6L10 2Z" />
+            </svg>
+          </MapControlButton>
+        </div>
+
+        <div className="map-map-corner map-map-corner--right">
+          <SidebarToggleButton
+            side="right"
+            isVisible={rightSidebarVisible}
+            onClick={onToggleRight}
+          />
+        </div>
+
+        <div className="map-overlay map-overlay--info">
           <h2>zsf3 block envelopes</h2>
           <p>Dataset folder: {DATASET_FOLDER_PATH}</p>
           <p>

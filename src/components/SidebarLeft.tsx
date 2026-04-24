@@ -13,8 +13,7 @@ const layerRows: Array<{ id: MapLayerId; name: string }> = [
   { id: 'roadLabels', name: 'Road Labels' },
   { id: 'transitLabels', name: 'Transit Labels' },
   { id: 'poiLabels', name: 'Point of Interest Labels' },
-  { id: 'landmarkIconLabels', name: 'Landmark Icon Labels' },
-  { id: 'show3dObjects', name: '3D Buildings / 3D Objects' },
+  { id: 'show3dObjects', name: '3D Buildings / Objects' },
 ];
 
 function SidebarLeft({
