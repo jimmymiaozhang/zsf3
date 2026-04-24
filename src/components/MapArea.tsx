@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { MapLayerVisibilityState } from '../App';
 import {
@@ -184,6 +184,9 @@ function MapArea({
   const [zoningLoadError, setZoningLoadError] = useState<string | null>(null);
   const [itemCount, setItemCount] = useState(0);
   const [mapBearing, setMapBearing] = useState(DEFAULT_BEARING);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     mapRef.current?.resize();
@@ -238,8 +241,6 @@ function MapArea({
         const bounds = getEnvelopeCollectionBounds(collection);
         dataBoundsRef.current = bounds;
         envelopeRoot = buildEnvelopeSceneGroup(collections);
-        const defaultBbl = collection.items[0].bbl;
-
         const loadLotRequirementsForBbl = async (bbl: string) => {
           const requestId = ++lotSelectionRequestRef.current;
           const cached = lotRequirementsCacheRef.current[bbl];
@@ -302,8 +303,6 @@ function MapArea({
             });
           }
         };
-
-        void loadLotRequirementsForBbl(defaultBbl);
 
         mapboxgl.accessToken = token;
 
@@ -403,9 +402,18 @@ function MapArea({
             map.getCanvas().clientHeight
           );
 
-          const nextBbl = pickedEnvelope?.bbl ?? defaultBbl;
           envelopeLayer.setSelectedItem(pickedEnvelope?.id ?? null);
-          void loadLotRequirementsForBbl(nextBbl);
+          if (!pickedEnvelope?.bbl) {
+            onLotSelectionChange({
+              activeBbl: null,
+              lotRequirements: null,
+              lotRequirementsLoading: false,
+              lotRequirementsError: null,
+            });
+            return;
+          }
+
+          void loadLotRequirementsForBbl(pickedEnvelope.bbl);
         };
 
         const handleMouseLeave = () => {
@@ -485,6 +493,66 @@ function MapArea({
     });
   };
 
+  const handleSearchSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchError('Enter an address to search.');
+      return;
+    }
+
+    if (!mapRef.current) {
+      setSearchError('Map is not ready yet.');
+      return;
+    }
+
+    setSearching(true);
+    setSearchError(null);
+
+    try {
+      const center = mapRef.current.getCenter();
+      const url = new URL(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          query
+        )}.json`
+      );
+      url.searchParams.set('access_token', token);
+      url.searchParams.set('autocomplete', 'true');
+      url.searchParams.set('limit', '1');
+      url.searchParams.set('proximity', `${center.lng},${center.lat}`);
+      url.searchParams.set('bbox', '-74.30,40.45,-73.65,40.95');
+
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        throw new Error(`Search failed with HTTP ${response.status}`);
+      }
+
+      const data = (await response.json()) as {
+        features?: Array<{ center?: [number, number] }>;
+      };
+      const feature = data.features?.[0];
+      const nextCenter = feature?.center;
+
+      if (!nextCenter) {
+        setSearchError('No matching address found.');
+        return;
+      }
+
+      mapRef.current.easeTo({
+        center: nextCenter,
+        zoom: Math.max(mapRef.current.getZoom(), 17),
+        duration: 900,
+      });
+    } catch (error) {
+      setSearchError(
+        error instanceof Error ? error.message : 'Address search failed.'
+      );
+    } finally {
+      setSearching(false);
+    }
+  };
+
   if (!token) {
     return (
       <main className="map-panel">
@@ -524,6 +592,28 @@ function MapArea({
         ) : null}
 
         <div className="map-floating-controls">
+          <form className="map-search" onSubmit={handleSearchSubmit}>
+            <input
+              className="map-search__input"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search address"
+              aria-label="Search address"
+            />
+            <button
+              className="map-search__button"
+              type="submit"
+              aria-label="Search address"
+              title="Search address"
+              disabled={searching}
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="9" cy="9" r="4.75" />
+                <path d="M12.7 12.7L16 16" />
+              </svg>
+            </button>
+          </form>
           <MapControlButton
             ariaLabel="Reset map view"
             title="Reset view"
@@ -603,6 +693,7 @@ function MapArea({
           {zoningLoadError ? (
             <p>Zoning overlay unavailable: {zoningLoadError}</p>
           ) : null}
+          {searchError ? <p>Search: {searchError}</p> : null}
         </div>
       </div>
     </main>
