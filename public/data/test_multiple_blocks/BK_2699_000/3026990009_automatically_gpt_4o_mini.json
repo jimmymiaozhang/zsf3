@@ -1,0 +1,374 @@
+{
+  "schema_version": "1.0.0",
+  "last_updated": "2026-03-14T20:13:18.013492",
+  "units": {
+    "distance": "Feet (FT)",
+    "area": "Square Feet (SF)"
+  },
+  "metadata": {
+    "lot_address": "70 ECKFORD STREET",
+    "borough": 3,
+    "block": 2699,
+    "lot": 9,
+    "bbl": 3026990009,
+    "zoning_map": "13a",
+    "community_district": "301",
+    "existing_floor_area": 18183,
+    "lot_type": 3,
+    "current_use": "04",
+    "nyc_designated_landmark": null
+  },
+  "spatial_data": {
+    "geometries": [
+      {
+        "id": 0,
+        "type": "Polygon",
+        "crs": "EPSG:2263",
+        "source": "from_qgis test_lots.gpkg",
+        "coordinates": [
+          [
+            998678.127286911,
+            202542.15598917007
+          ],
+          [
+            998706.3939771652,
+            202448.2802052498
+          ],
+          [
+            998716.7660069466,
+            202451.46622514725
+          ],
+          [
+            998732.3584780693,
+            202398.71828508377
+          ],
+          [
+            998669.4275155067,
+            202390.66286230087
+          ],
+          [
+            998650.8077950478,
+            202538.1166191101
+          ],
+          [
+            998678.127286911,
+            202542.15598917007
+          ]
+        ]
+      }
+    ],
+    "lot_area": {
+      "legal": {
+        "area": 6401.0,
+        "source": "MapPLUTO",
+        "source_file": null,
+        "field": "LotArea",
+        "is_authoritative": true
+      },
+      "calculated": {
+        "area": 6563.7076669,
+        "method": "Shape_Area / polygon area",
+        "is_authoritative": false
+      },
+      "surveyed": {
+        "area": null,
+        "source": null,
+        "is_authoritative": false
+      }
+    },
+    "lot_lines": [
+      {
+        "id": 0,
+        "geometry_id": 0,
+        "vertices": [
+          0,
+          1
+        ],
+        "lot_line_type": "side",
+        "street_type": null,
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 98.03911762442658,
+        "surveyed_length": null
+      },
+      {
+        "id": 1,
+        "geometry_id": 0,
+        "vertices": [
+          1,
+          2
+        ],
+        "lot_line_type": "rear",
+        "street_type": null,
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 10.850332924479925,
+        "surveyed_length": null
+      },
+      {
+        "id": 2,
+        "geometry_id": 0,
+        "vertices": [
+          2,
+          3
+        ],
+        "lot_line_type": "rear",
+        "street_type": null,
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 55.00427562157009,
+        "surveyed_length": null
+      },
+      {
+        "id": 3,
+        "geometry_id": 0,
+        "vertices": [
+          3,
+          4
+        ],
+        "lot_line_type": "side",
+        "street_type": null,
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 63.44443147559674,
+        "surveyed_length": null
+      },
+      {
+        "id": 4,
+        "geometry_id": 0,
+        "vertices": [
+          4,
+          5
+        ],
+        "lot_line_type": "front",
+        "street_type": "narrow",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 148.62470988071811,
+        "surveyed_length": null
+      },
+      {
+        "id": 5,
+        "geometry_id": 0,
+        "vertices": [
+          5,
+          0
+        ],
+        "lot_line_type": "front",
+        "street_type": "narrow",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 27.61650133792442,
+        "surveyed_length": null
+      }
+    ]
+  },
+  "zoning_context": {
+    "primary_zoning_districts": [
+      {
+        "id": 0,
+        "type": "primary_district",
+        "code": "R6B",
+        "name": null,
+        "applies": true,
+        "zr_sections": [],
+        "notes": null
+      },
+      {
+        "id": 1,
+        "type": "primary_district",
+        "code": "nan",
+        "name": null,
+        "applies": true,
+        "zr_sections": [],
+        "notes": null
+      }
+    ],
+    "commercial_overlays": [
+      {
+        "id": 0,
+        "type": "commercial_overlay",
+        "code": "nan",
+        "name": null,
+        "applies": true,
+        "zr_sections": [],
+        "notes": null
+      }
+    ],
+    "special_district_overlays": [
+      {
+        "id": 0,
+        "type": "special_district_overlay",
+        "code": "nan",
+        "name": null,
+        "applies": true,
+        "zr_sections": [],
+        "notes": null
+      }
+    ],
+    "historic_district_overlays": [
+      {
+        "id": 0,
+        "type": "historic_district_overlay",
+        "code": null,
+        "name": null,
+        "applies": false,
+        "zr_sections": [],
+        "notes": null
+      }
+    ],
+    "other_overlays": [
+      {
+        "id": 0,
+        "type": "other",
+        "code": null,
+        "name": null,
+        "applies": false,
+        "zr_sections": [],
+        "mapped_area_ref": null,
+        "notes": null
+      }
+    ]
+  },
+  "zoning_scenarios": [
+    {
+      "id": 0,
+      "applies_to_geometry_ids": [
+        0
+      ],
+      "bulk_far": {
+        "by_use": {
+          "residential": {
+            "base_far": 2.0,
+            "max_far": 2.0,
+            "notes": null
+          },
+          "commercial": {
+            "base_far": 2.0,
+            "max_far": 2.0,
+            "notes": null
+          },
+          "community_facility": {
+            "base_far": 2.0,
+            "max_far": 2.0,
+            "notes": null
+          },
+          "manufacturing": {
+            "base_far": null,
+            "max_far": null,
+            "notes": null
+          }
+        },
+        "max_permitted_floor_area": {
+          "residential": 12802,
+          "commercial": 12802,
+          "community_facility": 12802,
+          "manufacturing": null,
+          "all_uses": 12802
+        }
+      },
+      "height_and_setback": {
+        "narrow_street": {
+          "min_base_height": 30.0,
+          "max_base_height": 40.0,
+          "max_building_height": 50.0,
+          "setback": 10.0,
+          "notes": null
+        },
+        "wide_street": {
+          "min_base_height": 30.0,
+          "max_base_height": 40.0,
+          "max_building_height": 50.0,
+          "setback": 10.0,
+          "notes": null
+        },
+        "street_wall": {
+          "required": 60,
+          "min_coverage_percent": null,
+          "min_height": null,
+          "max_height": null,
+          "additional_rules": null
+        }
+      },
+      "lot_coverage_and_yards": {
+        "lot_coverage": {
+          "residential_corner_lot_percent": null,
+          "residential_interior_lot_percent": null,
+          "community_facility_corner_lot_percent": null,
+          "community_facility_interior_lot_percent": null,
+          "notes": null
+        },
+        "yards": {
+          "front_yard": {
+            "required": null,
+            "min_depth": null,
+            "notes": null
+          },
+          "side_yard": {
+            "required": null,
+            "min_width": null,
+            "notes": null
+          },
+          "rear_yard": {
+            "required": null,
+            "min_depth": null,
+            "notes": null
+          }
+        },
+        "open_space": {
+          "required": null,
+          "ratio": null,
+          "notes": null
+        }
+      },
+      "parking_and_loading": {
+        "residential_parking": {
+          "required": 1,
+          "ratio": null,
+          "within_manhattan_core": 0.0,
+          "notes": null
+        },
+        "community_facility_parking": {
+          "required": 0.016,
+          "ratio": null,
+          "notes": null
+        },
+        "commercial_parking": {
+          "required": 0.5,
+          "ratio": null,
+          "notes": null
+        },
+        "loading_berths": {
+          "required": null,
+          "count": null,
+          "thresholds": null,
+          "notes": null
+        }
+      },
+      "residential_density": {
+        "residential_density_factor": 1.0,
+        "max_dwelling_units": null,
+        "notes": null
+      },
+      "additional_regulations": [
+        {
+          "zr_section": null,
+          "title": null,
+          "text": null
+        }
+      ],
+      "notes": null
+    }
+  ],
+  "assembly_metadata": {
+    "timestamp": "2026-03-14T20:13:18.013496",
+    "source_model": "gpt_4o_mini",
+    "phase_3_file": "lookup_results_3026990009_gpt_4o_mini.json",
+    "phase_4_file": "derived_results_3026990009_gpt_4o_mini.json",
+    "phase_5_notebook": "phase_5_1_assemble_automatically.ipynb",
+    "total_fields": 48,
+    "fields_written": 24,
+    "fields_null": 24,
+    "fields_error": 0
+  }
+}

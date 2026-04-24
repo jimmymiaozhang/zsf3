@@ -1,5 +1,6 @@
 {
   "blocks": [
     "/data/test_one_block/block_3_2679_envelopes.json"
-  ]
+  ],
+  "lotZoningRequirements": {}
 }

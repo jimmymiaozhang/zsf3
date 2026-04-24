@@ -1,0 +1,448 @@
+{
+  "schema_version": "1.0.0",
+  "last_updated": "2026-03-15T01:39:05.981954",
+  "units": {
+    "distance": "Feet (FT)",
+    "area": "Square Feet (SF)"
+  },
+  "metadata": {
+    "lot_address": "28 BROOME STREET",
+    "borough": 3,
+    "block": 2701,
+    "lot": 20,
+    "bbl": 3027010020,
+    "zoning_map": "13a",
+    "community_district": "301",
+    "existing_floor_area": 6995,
+    "lot_type": 3,
+    "current_use": "02",
+    "nyc_designated_landmark": null
+  },
+  "spatial_data": {
+    "geometries": [
+      {
+        "id": 0,
+        "type": "Polygon",
+        "crs": "EPSG:2263",
+        "source": "from_qgis test_lots.gpkg",
+        "coordinates": [
+          [
+            999231.1570253372,
+            202301.64694166183
+          ],
+          [
+            999168.2847976685,
+            202375.92303991318
+          ],
+          [
+            999167.6178026199,
+            202377.31838655472
+          ],
+          [
+            999167.2788949013,
+            202379.1523718834
+          ],
+          [
+            999167.082359314,
+            202381.76359891891
+          ],
+          [
+            999167.19784832,
+            202383.6048078537
+          ],
+          [
+            999167.6335301399,
+            202385.4738755226
+          ],
+          [
+            999168.6935658455,
+            202387.6431722641
+          ],
+          [
+            999170.1177773476,
+            202389.57950925827
+          ],
+          [
+            999171.3159484863,
+            202390.72025632858
+          ],
+          [
+            999172.593184948,
+            202391.43711662292
+          ],
+          [
+            999173.8520417213,
+            202391.79672050476
+          ],
+          [
+            999176.5580615997,
+            202392.2078051567
+          ],
+          [
+            999219.4828572273,
+            202397.59000492096
+          ],
+          [
+            999231.1570253372,
+            202301.64694166183
+          ]
+        ]
+      }
+    ],
+    "lot_area": {
+      "legal": {
+        "area": 2000.0,
+        "source": "MapPLUTO",
+        "source_file": null,
+        "field": "LotArea",
+        "is_authoritative": true
+      },
+      "calculated": {
+        "area": 2973.8121183,
+        "method": "Shape_Area / polygon area",
+        "is_authoritative": false
+      },
+      "surveyed": {
+        "area": null,
+        "source": null,
+        "is_authoritative": false
+      }
+    },
+    "lot_lines": [
+      {
+        "id": 0,
+        "geometry_id": 0,
+        "vertices": [
+          0,
+          1
+        ],
+        "lot_line_type": "front",
+        "street_type": "wide",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 97.31318401673944,
+        "surveyed_length": null
+      },
+      {
+        "id": 1,
+        "geometry_id": 0,
+        "vertices": [
+          1,
+          2
+        ],
+        "lot_line_type": "front",
+        "street_type": "wide",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 1.546568667991357,
+        "surveyed_length": null
+      },
+      {
+        "id": 2,
+        "geometry_id": 0,
+        "vertices": [
+          2,
+          6
+        ],
+        "lot_line_type": "side",
+        "street_type": null,
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 8.247651492528394,
+        "surveyed_length": null
+      },
+      {
+        "id": 3,
+        "geometry_id": 0,
+        "vertices": [
+          6,
+          7
+        ],
+        "lot_line_type": "front",
+        "street_type": "wide",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 2.4144407322806027,
+        "surveyed_length": null
+      },
+      {
+        "id": 4,
+        "geometry_id": 0,
+        "vertices": [
+          7,
+          8
+        ],
+        "lot_line_type": "front",
+        "street_type": "wide",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 2.4037011789403064,
+        "surveyed_length": null
+      },
+      {
+        "id": 5,
+        "geometry_id": 0,
+        "vertices": [
+          8,
+          9
+        ],
+        "lot_line_type": "front",
+        "street_type": "narrow",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 1.654363308403629,
+        "surveyed_length": null
+      },
+      {
+        "id": 6,
+        "geometry_id": 0,
+        "vertices": [
+          9,
+          10
+        ],
+        "lot_line_type": "front",
+        "street_type": "narrow",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 1.4646575232952252,
+        "surveyed_length": null
+      },
+      {
+        "id": 7,
+        "geometry_id": 0,
+        "vertices": [
+          10,
+          13
+        ],
+        "lot_line_type": "front",
+        "street_type": "narrow",
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 47.30718634862372,
+        "surveyed_length": null
+      },
+      {
+        "id": 8,
+        "geometry_id": 0,
+        "vertices": [
+          13,
+          0
+        ],
+        "lot_line_type": "side",
+        "street_type": null,
+        "street_name": null,
+        "legal_length": null,
+        "calculated_length": 96.6506988521163,
+        "surveyed_length": null
+      }
+    ]
+  },
+  "zoning_context": {
+    "primary_zoning_districts": [
+      {
+        "id": 0,
+        "type": "primary_district",
+        "code": "R6B",
+        "name": null,
+        "applies": true,
+        "zr_sections": [],
+        "notes": null
+      },
+      {
+        "id": 1,
+        "type": "primary_district",
+        "code": "nan",
+        "name": null,
+        "applies": true,
+        "zr_sections": [],
+        "notes": null
+      }
+    ],
+    "commercial_overlays": [
+      {
+        "id": 0,
+        "type": "commercial_overlay",
+        "code": "nan",
+        "name": null,
+        "applies": true,
+        "zr_sections": [],
+        "notes": null
+      }
+    ],
+    "special_district_overlays": [
+      {
+        "id": 0,
+        "type": "special_district_overlay",
+        "code": "nan",
+        "name": null,
+        "applies": true,
+        "zr_sections": [],
+        "notes": null
+      }
+    ],
+    "historic_district_overlays": [
+      {
+        "id": 0,
+        "type": "historic_district_overlay",
+        "code": null,
+        "name": null,
+        "applies": false,
+        "zr_sections": [],
+        "notes": null
+      }
+    ],
+    "other_overlays": [
+      {
+        "id": 0,
+        "type": "other",
+        "code": null,
+        "name": null,
+        "applies": false,
+        "zr_sections": [],
+        "mapped_area_ref": null,
+        "notes": null
+      }
+    ]
+  },
+  "zoning_scenarios": [
+    {
+      "id": 0,
+      "applies_to_geometry_ids": [
+        0
+      ],
+      "bulk_far": {
+        "by_use": {
+          "residential": {
+            "base_far": 2.0,
+            "max_far": 2.0,
+            "notes": null
+          },
+          "commercial": {
+            "base_far": 2.0,
+            "max_far": 2.0,
+            "notes": null
+          },
+          "community_facility": {
+            "base_far": 2.0,
+            "max_far": 2.0,
+            "notes": null
+          },
+          "manufacturing": {
+            "base_far": null,
+            "max_far": null,
+            "notes": null
+          }
+        },
+        "max_permitted_floor_area": {
+          "residential": 4000,
+          "commercial": 4000,
+          "community_facility": 4000,
+          "manufacturing": null,
+          "all_uses": 4000
+        }
+      },
+      "height_and_setback": {
+        "narrow_street": {
+          "min_base_height": 30.0,
+          "max_base_height": 40.0,
+          "max_building_height": 50.0,
+          "setback": 10.0,
+          "notes": null
+        },
+        "wide_street": {
+          "min_base_height": 30.0,
+          "max_base_height": 40.0,
+          "max_building_height": 50.0,
+          "setback": 10.0,
+          "notes": null
+        },
+        "street_wall": {
+          "required": 0,
+          "min_coverage_percent": null,
+          "min_height": null,
+          "max_height": null,
+          "additional_rules": null
+        }
+      },
+      "lot_coverage_and_yards": {
+        "lot_coverage": {
+          "residential_corner_lot_percent": null,
+          "residential_interior_lot_percent": null,
+          "community_facility_corner_lot_percent": null,
+          "community_facility_interior_lot_percent": null,
+          "notes": null
+        },
+        "yards": {
+          "front_yard": {
+            "required": null,
+            "min_depth": null,
+            "notes": null
+          },
+          "side_yard": {
+            "required": null,
+            "min_width": null,
+            "notes": null
+          },
+          "rear_yard": {
+            "required": null,
+            "min_depth": null,
+            "notes": null
+          }
+        },
+        "open_space": {
+          "required": null,
+          "ratio": null,
+          "notes": null
+        }
+      },
+      "parking_and_loading": {
+        "residential_parking": {
+          "required": 1,
+          "ratio": null,
+          "within_manhattan_core": 0.0,
+          "notes": null
+        },
+        "community_facility_parking": {
+          "required": 5,
+          "ratio": null,
+          "notes": null
+        },
+        "commercial_parking": {
+          "required": 1,
+          "ratio": null,
+          "notes": null
+        },
+        "loading_berths": {
+          "required": null,
+          "count": null,
+          "thresholds": null,
+          "notes": null
+        }
+      },
+      "residential_density": {
+        "residential_density_factor": 1.0,
+        "max_dwelling_units": null,
+        "notes": null
+      },
+      "additional_regulations": [
+        {
+          "zr_section": null,
+          "title": null,
+          "text": null
+        }
+      ],
+      "notes": null
+    }
+  ],
+  "assembly_metadata": {
+    "timestamp": "2026-03-15T01:39:05.981958",
+    "source_model": "gpt_4o_mini",
+    "phase_3_file": "lookup_results_3027010020_gpt_4o_mini.json",
+    "phase_4_file": "derived_results_3027010020_gpt_4o_mini.json",
+    "phase_5_notebook": "phase_5_1_assemble_automatically.ipynb",
+    "total_fields": 48,
+    "fields_written": 24,
+    "fields_null": 24,
+    "fields_error": 0
+  }
+}
