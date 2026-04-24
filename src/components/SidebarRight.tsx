@@ -1,5 +1,6 @@
 type SidebarRightProps = {
   isVisible: boolean;
+  onHide: () => void;
 };
 
 const insightCards = [
@@ -8,12 +9,25 @@ const insightCards = [
   { name: 'Basemap', value: 'Mapbox Standard', tone: '' },
 ];
 
-function SidebarRight({ isVisible }: SidebarRightProps) {
+function SidebarRight({ isVisible, onHide }: SidebarRightProps) {
   return (
     <aside
       className={`sidebar sidebar-right ${isVisible ? 'open' : 'closed'}`}
       aria-hidden={!isVisible}
     >
+      {isVisible ? (
+        <button
+          className="sidebar-handle sidebar-handle--right"
+          type="button"
+          onClick={onHide}
+          aria-label="Hide right sidebar"
+          title="Hide right sidebar"
+        >
+          <svg viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M5 5L13 13M13 5L5 13" />
+          </svg>
+        </button>
+      ) : null}
       <div className="sidebar-inner">
         <div className="sidebar-toolbar">
           <button className="active" type="button">

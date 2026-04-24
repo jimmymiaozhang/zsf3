@@ -4,6 +4,7 @@ type SidebarLeftProps = {
   isVisible: boolean;
   mapLayers: MapLayerVisibilityState;
   onToggleLayer: (layerId: MapLayerId) => void;
+  onHide: () => void;
 };
 
 const layerRows: Array<{ id: MapLayerId; name: string }> = [
@@ -20,12 +21,26 @@ function SidebarLeft({
   isVisible,
   mapLayers,
   onToggleLayer,
+  onHide,
 }: SidebarLeftProps) {
   return (
     <aside
       className={`sidebar sidebar-left ${isVisible ? 'open' : 'closed'}`}
       aria-hidden={!isVisible}
     >
+      {isVisible ? (
+        <button
+          className="sidebar-handle sidebar-handle--left"
+          type="button"
+          onClick={onHide}
+          aria-label="Hide left sidebar"
+          title="Hide left sidebar"
+        >
+          <svg viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M5 5L13 13M13 5L5 13" />
+          </svg>
+        </button>
+      ) : null}
       <div className="sidebar-inner">
         <div className="sidebar-toolbar">
           <button className="active" type="button">

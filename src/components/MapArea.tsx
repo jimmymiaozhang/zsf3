@@ -107,49 +107,26 @@ function fitMapToBounds(
 }
 
 function SidebarToggleButton({
-  side,
-  isVisible,
   onClick,
 }: {
-  side: 'left' | 'right';
-  isVisible: boolean;
   onClick: () => void;
 }) {
-  const railX = side === 'left' ? 3 : 15;
-  const chevronPath =
-    side === 'left'
-      ? isVisible
-        ? 'M12 6L8 9L12 12'
-        : 'M8 6L12 9L8 12'
-      : isVisible
-        ? 'M8 6L12 9L8 12'
-        : 'M12 6L8 9L12 12';
-
   return (
     <button
       className="map-toggle map-toggle--icon"
       type="button"
       onClick={onClick}
-      aria-label={`${isVisible ? 'Hide' : 'Show'} ${side} sidebar`}
-      title={`${isVisible ? 'Hide' : 'Show'} ${side} sidebar`}
+      aria-label="Show sidebar"
+      title="Show sidebar"
     >
       <svg
         className="map-toggle__icon"
         viewBox="0 0 18 18"
         aria-hidden="true"
       >
-        <rect
-          x={railX}
-          y="3"
-          width="2"
-          height="12"
-          rx="1"
-          className="map-toggle__rail"
-        />
-        <path
-          d={chevronPath}
-          className="map-toggle__chevron"
-        />
+        <path d="M4 5H14" className="map-toggle__menu-line" />
+        <path d="M4 9H14" className="map-toggle__menu-line" />
+        <path d="M4 13H14" className="map-toggle__menu-line" />
       </svg>
     </button>
   );
@@ -464,13 +441,13 @@ function MapArea({
       <div className="map-stage">
         <div ref={mapContainerRef} className="map-canvas" />
 
-        <div className="map-map-corner map-map-corner--left">
-          <SidebarToggleButton
-            side="left"
-            isVisible={leftSidebarVisible}
-            onClick={onToggleLeft}
-          />
-        </div>
+        {!leftSidebarVisible ? (
+          <div className="map-map-corner map-map-corner--left">
+            <SidebarToggleButton
+              onClick={onToggleLeft}
+            />
+          </div>
+        ) : null}
 
         <div className="map-floating-controls">
           <MapControlButton
@@ -487,7 +464,14 @@ function MapArea({
             onClick={handleZoomIn}
             className="map-control-button--icon"
           >
-            +
+            <svg
+              className="map-control-button__glyph"
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+            >
+              <path d="M10 5V15" />
+              <path d="M5 10H15" />
+            </svg>
           </MapControlButton>
           <MapControlButton
             ariaLabel="Zoom out"
@@ -495,7 +479,13 @@ function MapArea({
             onClick={handleZoomOut}
             className="map-control-button--icon"
           >
-            -
+            <svg
+              className="map-control-button__glyph"
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+            >
+              <path d="M5 10H15" />
+            </svg>
           </MapControlButton>
           <MapControlButton
             ariaLabel="Reset map north"
@@ -509,18 +499,25 @@ function MapArea({
               aria-hidden="true"
               style={{ transform: `rotate(${-mapBearing}deg)` }}
             >
-              <path d="M10 2L13.4 11H10.9L10 18L9.1 11H6.6L10 2Z" />
+              <path
+                className="map-control-button__compass-top"
+                d="M10 2.8L13.8 10H6.2L10 2.8Z"
+              />
+              <path
+                className="map-control-button__compass-bottom"
+                d="M6.2 10L10 17.2L13.8 10H6.2Z"
+              />
             </svg>
           </MapControlButton>
         </div>
 
-        <div className="map-map-corner map-map-corner--right">
-          <SidebarToggleButton
-            side="right"
-            isVisible={rightSidebarVisible}
-            onClick={onToggleRight}
-          />
-        </div>
+        {!rightSidebarVisible ? (
+          <div className="map-map-corner map-map-corner--right">
+            <SidebarToggleButton
+              onClick={onToggleRight}
+            />
+          </div>
+        ) : null}
 
         <div className="map-overlay map-overlay--info">
           <h2>zsf3 block envelopes</h2>

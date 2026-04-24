@@ -46,6 +46,7 @@ function App() {
           isVisible={leftSidebarVisible}
           mapLayers={mapLayers}
           onToggleLayer={handleToggleLayer}
+          onHide={() => setLeftSidebarVisible(false)}
         />
         <MapArea
           leftSidebarVisible={leftSidebarVisible}
@@ -54,7 +55,10 @@ function App() {
           onToggleLeft={() => setLeftSidebarVisible((visible) => !visible)}
           onToggleRight={() => setRightSidebarVisible((visible) => !visible)}
         />
-        <SidebarRight isVisible={rightSidebarVisible} />
+        <SidebarRight
+          isVisible={rightSidebarVisible}
+          onHide={() => setRightSidebarVisible(false)}
+        />
       </div>
     </div>
   );
