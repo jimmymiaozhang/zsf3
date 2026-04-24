@@ -1,13 +1,20 @@
 import { useState } from 'react';
 import type { MapLayerId, MapLayerVisibilityState } from '../App';
+import {
+  BASEMAP_STYLE_PRESETS,
+  getBasemapStylePreset,
+  type BasemapStyleId,
+} from '../lib/basemapStyles';
 
 type SidebarLeftProps = {
   isVisible: boolean;
   mapLayers: MapLayerVisibilityState;
+  basemapStyle: BasemapStyleId;
   datasetFolder: string;
   itemCount: number;
   activeBbl: string | null;
   zoningLoadError: string | null;
+  onSelectBasemapStyle: (styleId: BasemapStyleId) => void;
   onToggleLayer: (layerId: MapLayerId) => void;
   onHide: () => void;
 };
@@ -22,17 +29,28 @@ const layerRows: Array<{ id: MapLayerId; name: string }> = [
   { id: 'show3dObjects', name: '3D Buildings / Objects' },
 ];
 
+const classicStyleDisabledLayerIds: MapLayerId[] = [
+  'placeLabels',
+  'roadLabels',
+  'transitLabels',
+  'poiLabels',
+  'show3dObjects',
+];
+
 function SidebarLeft({
   isVisible,
   mapLayers,
+  basemapStyle,
   datasetFolder,
   itemCount,
   activeBbl,
   zoningLoadError,
+  onSelectBasemapStyle,
   onToggleLayer,
   onHide,
 }: SidebarLeftProps) {
-  const [activeTab, setActiveTab] = useState<'layers' | 'filters' | 'data'>('layers');
+  const [activeTab, setActiveTab] = useState<'layers' | 'styles' | 'data'>('layers');
+  const activeBasemapPreset = getBasemapStylePreset(basemapStyle);
 
   return (
     <aside
@@ -62,11 +80,11 @@ function SidebarLeft({
             Layers
           </button>
           <button
-            className={activeTab === 'filters' ? 'active' : ''}
+            className={activeTab === 'styles' ? 'active' : ''}
             type="button"
-            onClick={() => setActiveTab('filters')}
+            onClick={() => setActiveTab('styles')}
           >
-            Filters
+            Styles
           </button>
           <button
             className={activeTab === 'data' ? 'active' : ''}
@@ -86,18 +104,79 @@ function SidebarLeft({
                 current workspace.
               </p>
               <ul className="sidebar-list">
-                {layerRows.map((layer) => (
-                  <li key={layer.name} className="sidebar-row">
-                    <span>{layer.name}</span>
+                {layerRows.map((layer) => {
+                  const isClassicStyleRestricted =
+                    activeBasemapPreset.mode === 'classic' &&
+                    classicStyleDisabledLayerIds.includes(layer.id);
+                  const isLayerOn = isClassicStyleRestricted
+                    ? false
+                    : mapLayers[layer.id];
+
+                  return (
+                    <li
+                      key={layer.name}
+                      className={`sidebar-row ${
+                        isClassicStyleRestricted ? 'sidebar-row--disabled' : ''
+                      }`.trim()}
+                    >
+                      <span>{layer.name}</span>
+                      <button
+                        className={`layer-switch ${
+                          isLayerOn ? 'is-on' : 'is-off'
+                        } ${isClassicStyleRestricted ? 'is-disabled' : ''}`.trim()}
+                        disabled={isClassicStyleRestricted}
+                        type="button"
+                        onClick={() => {
+                          if (!isClassicStyleRestricted) {
+                            onToggleLayer(layer.id);
+                          }
+                        }}
+                        aria-disabled={isClassicStyleRestricted}
+                        aria-pressed={isLayerOn}
+                        aria-label={`${layer.name} ${
+                          isClassicStyleRestricted
+                            ? 'unavailable for this style'
+                            : isLayerOn
+                              ? 'on'
+                              : 'off'
+                        }`}
+                        title={
+                          isClassicStyleRestricted
+                            ? 'Unavailable for the current basemap style'
+                            : undefined
+                        }
+                      >
+                        <span className="layer-switch__thumb" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
+          {activeTab === 'styles' ? (
+            <section className="sidebar-section">
+              <h3>Basemap Styles</h3>
+              <p className="muted">
+                Choose one basemap preset at a time. Turning one on switches the
+                others off automatically. Standard themes preserve the richest
+                label and 3D toggle behavior; classic styles are included for
+                visual review.
+              </p>
+              <ul className="sidebar-list">
+                {BASEMAP_STYLE_PRESETS.map((style) => (
+                  <li key={style.id} className="sidebar-row">
+                    <span>{style.name}</span>
                     <button
                       className={`layer-switch ${
-                        mapLayers[layer.id] ? 'is-on' : 'is-off'
+                        basemapStyle === style.id ? 'is-on' : 'is-off'
                       }`.trim()}
                       type="button"
-                      onClick={() => onToggleLayer(layer.id)}
-                      aria-pressed={mapLayers[layer.id]}
-                      aria-label={`${layer.name} ${
-                        mapLayers[layer.id] ? 'on' : 'off'
+                      onClick={() => onSelectBasemapStyle(style.id)}
+                      aria-pressed={basemapStyle === style.id}
+                      aria-label={`${style.name} ${
+                        basemapStyle === style.id ? 'on' : 'off'
                       }`}
                     >
                       <span className="layer-switch__thumb" />
@@ -105,13 +184,6 @@ function SidebarLeft({
                   </li>
                 ))}
               </ul>
-            </section>
-          ) : null}
-
-          {activeTab === 'filters' ? (
-            <section className="sidebar-section">
-              <h3>Filters</h3>
-              <p className="muted">No filters are configured yet.</p>
             </section>
           ) : null}
 

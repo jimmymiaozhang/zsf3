@@ -9,6 +9,10 @@ import {
 import mapboxgl from 'mapbox-gl';
 import type { MapDataStatus, MapLayerVisibilityState } from '../App';
 import {
+  getBasemapStylePreset,
+  type BasemapStyleId,
+} from '../lib/basemapStyles';
+import {
   buildEnvelopeSceneGroup,
   createMercatorSceneLayer,
   disposeThreeObject,
@@ -32,6 +36,7 @@ type MapAreaProps = {
   leftSidebarVisible: boolean;
   rightSidebarVisible: boolean;
   mapLayers: MapLayerVisibilityState;
+  basemapStyle: BasemapStyleId;
   onLotSelectionChange: (next: LotSelectionState) => void;
   onMapDataStatusChange: (next: MapDataStatus) => void;
   onToggleLeft: () => void;
@@ -45,10 +50,19 @@ const DEFAULT_PITCH = 68;
 const LEFT_SIDEBAR_WIDTH = 320;
 const RIGHT_SIDEBAR_WIDTH = 480;
 
+function supportsStandardBasemapConfig(basemapStyle: BasemapStyleId) {
+  return getBasemapStylePreset(basemapStyle).mode === 'standard';
+}
+
 function applyBasemapLayerVisibility(
   map: mapboxgl.Map,
-  mapLayers: MapLayerVisibilityState
+  mapLayers: MapLayerVisibilityState,
+  basemapStyle: BasemapStyleId
 ) {
+  if (!supportsStandardBasemapConfig(basemapStyle)) {
+    return;
+  }
+
   map.setConfigProperty(
     'basemap',
     'showPointOfInterestLabels',
@@ -63,6 +77,16 @@ function applyBasemapLayerVisibility(
   map.setConfigProperty('basemap', 'showRoadLabels', mapLayers.roadLabels);
   map.setConfigProperty('basemap', 'showPlaceLabels', mapLayers.placeLabels);
   map.setConfigProperty('basemap', 'show3dObjects', mapLayers.show3dObjects);
+}
+
+function applyBasemapStylePreset(
+  map: mapboxgl.Map,
+  basemapStyle: BasemapStyleId
+) {
+  const preset = getBasemapStylePreset(basemapStyle);
+  if (preset.mode === 'standard' && preset.theme) {
+    map.setConfigProperty('basemap', 'theme', preset.theme);
+  }
 }
 
 async function fetchJson<T>(path: string) {
@@ -175,6 +199,7 @@ function MapArea({
   leftSidebarVisible,
   rightSidebarVisible,
   mapLayers,
+  basemapStyle,
   onLotSelectionChange,
   onMapDataStatusChange,
   onToggleLeft,
@@ -185,6 +210,8 @@ function MapArea({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const dataBoundsRef = useRef<mapboxgl.LngLatBounds | null>(null);
   const mapLayersRef = useRef(mapLayers);
+  const basemapStyleRef = useRef(basemapStyle);
+  const previousBasemapStyleRef = useRef(basemapStyle);
   const envelopeLayerRef = useRef<EnvelopeSceneLayer | null>(null);
   const loadLotRequirementsForBblRef = useRef<((bbl: string) => Promise<void>) | null>(
     null
@@ -226,12 +253,38 @@ function MapArea({
     mapLayersRef.current = mapLayers;
 
     if (mapRef.current?.isStyleLoaded()) {
-      applyBasemapLayerVisibility(mapRef.current, mapLayers);
+      applyBasemapLayerVisibility(
+        mapRef.current,
+        mapLayers,
+        basemapStyleRef.current
+      );
       setZoningVisibility(mapRef.current, mapLayers.zoningMap);
     }
 
     envelopeLayerRef.current?.setVisible(mapLayers.zoningEnvelopes);
   }, [mapLayers]);
+
+  useEffect(() => {
+    basemapStyleRef.current = basemapStyle;
+
+    if (mapRef.current?.isStyleLoaded()) {
+      const nextPreset = getBasemapStylePreset(basemapStyle);
+      const previousPreset = getBasemapStylePreset(previousBasemapStyleRef.current);
+
+      if (
+        nextPreset.mode === 'standard' &&
+        previousPreset.mode === 'standard' &&
+        nextPreset.styleUrl === previousPreset.styleUrl
+      ) {
+        applyBasemapStylePreset(mapRef.current, basemapStyle);
+        applyBasemapLayerVisibility(mapRef.current, mapLayersRef.current, basemapStyle);
+      } else {
+        mapRef.current.setStyle(nextPreset.styleUrl);
+      }
+    }
+
+    previousBasemapStyleRef.current = basemapStyle;
+  }, [basemapStyle]);
 
   useEffect(() => {
     onMapDataStatusChange({
@@ -354,14 +407,21 @@ function MapArea({
 
         mapboxgl.accessToken = token;
 
+        const initialBasemapPreset = getBasemapStylePreset(
+          basemapStyleRef.current
+        );
+
         map = new mapboxgl.Map({
           container: mapContainerRef.current as HTMLDivElement,
-          style: 'mapbox://styles/mapbox/standard',
-          config: {
-            basemap: {
-              theme: 'monochrome',
-            },
-          },
+          style: initialBasemapPreset.styleUrl,
+          config:
+            initialBasemapPreset.mode === 'standard' && initialBasemapPreset.theme
+              ? {
+                  basemap: {
+                    theme: initialBasemapPreset.theme,
+                  },
+                }
+              : undefined,
           center: bounds.getCenter(),
           zoom: 16.8,
           pitch: DEFAULT_PITCH,
@@ -413,7 +473,12 @@ function MapArea({
           };
 
           if (map) {
-            applyBasemapLayerVisibility(map, mapLayersRef.current);
+            applyBasemapStylePreset(map, basemapStyleRef.current);
+            applyBasemapLayerVisibility(
+              map,
+              mapLayersRef.current,
+              basemapStyleRef.current
+            );
           }
 
           void syncLayersWithStyle();
