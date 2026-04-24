@@ -16,6 +16,7 @@
 
 .navbar {
   display: flex;
+  position: relative;
   height: 60px;
   min-height: 60px;
   align-items: center;
@@ -33,9 +34,126 @@
   color: #111827;
 }
 
+.navbar-version {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #6b7280;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
 .navbar-menu {
   display: flex;
   gap: 12px;
+}
+
+.navbar-menu button {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 8px 12px;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.navbar-menu button:hover {
+  background: #f8fafc;
+  border-color: rgb(148 163 184 / 0.28);
+}
+
+.navbar-menu button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 0.95),
+    0 0 0 4px rgb(71 85 105 / 0.18);
+}
+
+.about-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(15 23 42 / 0.24);
+  backdrop-filter: blur(4px);
+}
+
+.about-dialog {
+  position: relative;
+  width: min(560px, calc(100vw - 48px));
+  border: 1px solid rgb(148 163 184 / 0.28);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.94);
+  box-shadow: 0 20px 50px rgb(15 23 42 / 0.22);
+  padding: 24px 24px 22px;
+}
+
+.about-dialog h2 {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 1.15rem;
+}
+
+.about-dialog p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.96rem;
+  line-height: 1.6;
+}
+
+.about-dialog__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgb(148 163 184 / 0.28);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.9);
+  color: #374151;
+  padding: 0;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.about-dialog__close:hover {
+  background: #fff;
+  box-shadow: 0 8px 18px rgb(15 23 42 / 0.1);
+  transform: translateY(-1px);
+}
+
+.about-dialog__close:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 0.95),
+    0 0 0 4px rgb(71 85 105 / 0.18);
+}
+
+.about-dialog__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.about-dialog__close path {
+  fill: none;
+  stroke: #374151;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .sidebar {
@@ -255,6 +373,11 @@
   color: #374151;
 }
 
+.sidebar-row--disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
 .layer-switch {
   position: relative;
   width: 42px;
@@ -288,6 +411,17 @@
   background: #d1d5db;
 }
 
+.layer-switch.is-disabled {
+  background: #e5e7eb;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.layer-switch.is-disabled:hover {
+  transform: none;
+}
+
 .layer-switch__thumb {
   position: absolute;
   top: 3px;
@@ -304,6 +438,11 @@
 
 .layer-switch.is-on .layer-switch__thumb {
   transform: translateX(18px);
+}
+
+.layer-switch.is-disabled .layer-switch__thumb {
+  background: #f9fafb;
+  box-shadow: none;
 }
 
 .map-panel {

@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import SidebarLeft from './components/SidebarLeft';
 import SidebarRight from './components/SidebarRight';
 import MapArea from './components/MapArea';
+import type { BasemapStyleId } from './lib/basemapStyles';
 import type { LotSelectionState } from './lib/lotZoningRequirements';
 
 const DATASET_FOLDER_PATH = '/data/test_multiple_blocks';
@@ -29,6 +30,7 @@ export type MapDataStatus = {
 function App() {
   const [leftSidebarVisible, setLeftSidebarVisible] = useState(false);
   const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
+  const [basemapStyle, setBasemapStyle] = useState<BasemapStyleId>('monochrome');
   const [mapLayers, setMapLayers] = useState<MapLayerVisibilityState>({
     zoningMap: true,
     zoningEnvelopes: true,
@@ -84,10 +86,12 @@ function App() {
         <SidebarLeft
           isVisible={leftSidebarVisible}
           mapLayers={mapLayers}
+          basemapStyle={basemapStyle}
           datasetFolder={DATASET_FOLDER_PATH}
           itemCount={mapDataStatus.itemCount}
           activeBbl={lotSelection.activeBbl}
           zoningLoadError={mapDataStatus.zoningLoadError}
+          onSelectBasemapStyle={setBasemapStyle}
           onToggleLayer={handleToggleLayer}
           onHide={() => setLeftSidebarVisible(false)}
         />
@@ -95,6 +99,7 @@ function App() {
           leftSidebarVisible={leftSidebarVisible}
           rightSidebarVisible={rightSidebarVisible}
           mapLayers={mapLayers}
+          basemapStyle={basemapStyle}
           onLotSelectionChange={handleLotSelectionChange}
           onMapDataStatusChange={handleMapDataStatusChange}
           onToggleLeft={() => setLeftSidebarVisible((visible) => !visible)}
