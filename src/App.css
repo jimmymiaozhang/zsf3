@@ -603,6 +603,14 @@
   transform: translateX(-50%);
 }
 
+.map-overlay--search-error {
+  left: 50%;
+  top: auto;
+  bottom: 16px;
+  transform: translateX(-50%);
+  max-width: 420px;
+}
+
 .map-overlay h2 {
   margin: 0 0 6px;
   font-size: 1rem;
@@ -616,4 +624,22 @@
 
 .map-overlay p:last-child {
   margin-bottom: 0;
+}
+
+.map-loading-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.62);
+  color: #374151;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 10px 24px rgb(15 23 42 / 0.08);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }

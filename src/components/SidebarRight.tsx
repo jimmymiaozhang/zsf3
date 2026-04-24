@@ -3,6 +3,11 @@ import {
   getApplicableCodes,
   type LotZoningRequirements,
 } from '../lib/lotZoningRequirements';
+import {
+  formatBoroughLabel,
+  formatLandUseLabel,
+  formatLotTypeLabel,
+} from '../lib/plutoLookups';
 import type { ReactNode } from 'react';
 
 type SidebarRightProps = {
@@ -93,7 +98,7 @@ function SidebarRight({
           title="Hide right sidebar"
         >
           <svg viewBox="0 0 18 18" aria-hidden="true">
-            <path d="M5 5L13 13M13 5L5 13" />
+            <path d="M7 4L11 9L7 14" />
           </svg>
         </button>
       ) : null}
@@ -109,11 +114,6 @@ function SidebarRight({
         <div className="sidebar-content">
           <section className="sidebar-section">
             <h3>Selected Lot</h3>
-            <p className="muted">
-              Click a zoning envelope to inspect the lot-level zoning
-              requirements JSON associated with that BBL.
-            </p>
-
             {selectedLotMessage ? <p className="muted">{selectedLotMessage}</p> : null}
 
             <div className="sidebar-data-grid">
@@ -129,12 +129,28 @@ function SidebarRight({
                 }
               />
               <InfoRow
+                label="Borough"
+                value={formatBoroughLabel(metadata?.borough)}
+              />
+              <InfoRow
                 label="Zoning Map"
                 value={metadata?.zoning_map ?? 'N/A'}
               />
               <InfoRow
                 label="Community District"
                 value={metadata ? String(metadata.community_district ?? 'N/A') : 'N/A'}
+              />
+              <InfoRow
+                label="Current Use"
+                value={formatLandUseLabel(metadata?.current_use)}
+              />
+              <InfoRow
+                label="Lot Type"
+                value={formatLotTypeLabel(metadata?.lot_type)}
+              />
+              <InfoRow
+                label="Landmark Status"
+                value={metadata?.nyc_designated_landmark ?? 'None'}
               />
               <InfoRow
                 label="Existing Floor Area"
@@ -220,7 +236,25 @@ function SidebarRight({
                 }
               />
               <InfoRow
-                label="Narrow St. Height"
+                label="Narrow St. Min Base Height"
+                value={
+                  narrowStreet?.min_base_height !== null &&
+                  narrowStreet?.min_base_height !== undefined
+                    ? `${formatNumber(narrowStreet.min_base_height, 1)} ft`
+                    : 'N/A'
+                }
+              />
+              <InfoRow
+                label="Narrow St. Max Base Height"
+                value={
+                  narrowStreet?.max_base_height !== null &&
+                  narrowStreet?.max_base_height !== undefined
+                    ? `${formatNumber(narrowStreet.max_base_height, 1)} ft`
+                    : 'N/A'
+                }
+              />
+              <InfoRow
+                label="Narrow St. Max Building Height"
                 value={
                   narrowStreet?.max_building_height !== null &&
                   narrowStreet?.max_building_height !== undefined
@@ -238,7 +272,25 @@ function SidebarRight({
                 }
               />
               <InfoRow
-                label="Wide St. Height"
+                label="Wide St. Min Base Height"
+                value={
+                  wideStreet?.min_base_height !== null &&
+                  wideStreet?.min_base_height !== undefined
+                    ? `${formatNumber(wideStreet.min_base_height, 1)} ft`
+                    : 'N/A'
+                }
+              />
+              <InfoRow
+                label="Wide St. Max Base Height"
+                value={
+                  wideStreet?.max_base_height !== null &&
+                  wideStreet?.max_base_height !== undefined
+                    ? `${formatNumber(wideStreet.max_base_height, 1)} ft`
+                    : 'N/A'
+                }
+              />
+              <InfoRow
+                label="Wide St. Max Building Height"
                 value={
                   wideStreet?.max_building_height !== null &&
                   wideStreet?.max_building_height !== undefined
