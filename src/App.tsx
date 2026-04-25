@@ -12,6 +12,7 @@ const DATASET_FOLDER_PATH = '/data/test_multiple_blocks';
 export type MapLayerId =
   | 'zoningMap'
   | 'historicDistricts'
+  | 'floodResiliency'
   | 'zoningEnvelopes'
   | 'placeLabels'
   | 'roadLabels'
@@ -33,8 +34,9 @@ function App() {
   const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
   const [basemapStyle, setBasemapStyle] = useState<BasemapStyleId>('monochrome');
   const [mapLayers, setMapLayers] = useState<MapLayerVisibilityState>({
-    zoningMap: true,
+    zoningMap: false,
     historicDistricts: false,
+    floodResiliency: false,
     zoningEnvelopes: true,
     placeLabels: true,
     roadLabels: true,
