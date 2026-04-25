@@ -22,6 +22,7 @@ type SidebarLeftProps = {
 const layerRows: Array<{ id: MapLayerId; name: string }> = [
   { id: 'zoningMap', name: 'Zoning Map' },
   { id: 'historicDistricts', name: 'Historic Districts' },
+  { id: 'floodResiliency', name: 'Flood / Resiliency' },
   { id: 'zoningEnvelopes', name: 'Zoning Envelopes' },
   { id: 'placeLabels', name: 'Place Labels' },
   { id: 'roadLabels', name: 'Road Labels' },

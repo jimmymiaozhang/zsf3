@@ -13,6 +13,11 @@ import {
   type BasemapStyleId,
 } from '../lib/basemapStyles';
 import {
+  addFloodResiliencyLayers,
+  fetchFloodResiliencyOverlay,
+  setFloodResiliencyVisibility,
+} from '../lib/floodResiliency';
+import {
   addHistoricDistrictLayers,
   fetchHistoricDistricts,
   setHistoricDistrictVisibility,
@@ -217,8 +222,10 @@ function MapArea({
   const mapLayersRef = useRef(mapLayers);
   const basemapStyleRef = useRef(basemapStyle);
   const previousBasemapStyleRef = useRef(basemapStyle);
+  const floodResiliencyDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const historicDistrictsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const envelopeLayerRef = useRef<EnvelopeSceneLayer | null>(null);
+  const loadFloodResiliencyRef = useRef<(() => Promise<void>) | null>(null);
   const loadHistoricDistrictsRef = useRef<(() => Promise<void>) | null>(null);
   const loadLotRequirementsForBblRef = useRef<((bbl: string) => Promise<void>) | null>(
     null
@@ -233,6 +240,10 @@ function MapArea({
   const [itemCount, setItemCount] = useState(0);
   const [envelopeDataLoading, setEnvelopeDataLoading] = useState(true);
   const [zoningDataLoading, setZoningDataLoading] = useState(true);
+  const [floodResiliencyDataLoading, setFloodResiliencyDataLoading] =
+    useState(true);
+  const [historicDistrictsDataLoading, setHistoricDistrictsDataLoading] =
+    useState(true);
   const [mapBearing, setMapBearing] = useState(DEFAULT_BEARING);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -266,6 +277,11 @@ function MapArea({
         basemapStyleRef.current
       );
       setZoningVisibility(mapRef.current, mapLayers.zoningMap);
+      if (mapLayers.floodResiliency) {
+        void loadFloodResiliencyRef.current?.();
+      } else {
+        setFloodResiliencyVisibility(mapRef.current, false);
+      }
       if (mapLayers.historicDistricts) {
         void loadHistoricDistrictsRef.current?.();
       } else {
@@ -302,13 +318,19 @@ function MapArea({
     onMapDataStatusChange({
       itemCount,
       zoningLoadError,
-      isDataLoading: envelopeDataLoading || zoningDataLoading,
+      isDataLoading:
+        envelopeDataLoading ||
+        zoningDataLoading ||
+        floodResiliencyDataLoading ||
+        historicDistrictsDataLoading,
     });
   }, [
     itemCount,
     zoningLoadError,
     envelopeDataLoading,
     zoningDataLoading,
+    floodResiliencyDataLoading,
+    historicDistrictsDataLoading,
     onMapDataStatusChange,
   ]);
 
@@ -326,6 +348,8 @@ function MapArea({
       try {
         setEnvelopeDataLoading(true);
         setZoningDataLoading(true);
+        setFloodResiliencyDataLoading(true);
+        setHistoricDistrictsDataLoading(true);
         const blockIndex = await fetchJson<DatasetIndex>(BLOCK_INDEX_PATH);
         if (!blockIndex.blocks.length) {
           throw new Error('Block index does not list any envelope files.');
@@ -448,6 +472,55 @@ function MapArea({
         envelopeLayer.setVisible(mapLayersRef.current.zoningEnvelopes);
         envelopeLayerRef.current = envelopeLayer;
 
+        let floodResiliencyLoadPromise:
+          | Promise<GeoJSON.FeatureCollection>
+          | null = null;
+        let historicDistrictsLoadPromise:
+          | Promise<GeoJSON.FeatureCollection>
+          | null = null;
+
+        const syncFloodResiliencyWithMap = async () => {
+          if (!map) {
+            return;
+          }
+
+          if (floodResiliencyDataRef.current) {
+            addFloodResiliencyLayers(
+              map,
+              floodResiliencyDataRef.current,
+              mapLayersRef.current.floodResiliency
+            );
+            return;
+          }
+
+          if (!floodResiliencyLoadPromise) {
+            setFloodResiliencyDataLoading(true);
+            floodResiliencyLoadPromise = fetchFloodResiliencyOverlay()
+              .then((floodResiliencyData) => {
+                floodResiliencyDataRef.current = floodResiliencyData;
+                return floodResiliencyData;
+              })
+              .finally(() => {
+                floodResiliencyLoadPromise = null;
+                if (!isCancelled) {
+                  setFloodResiliencyDataLoading(false);
+                }
+              });
+          }
+
+          const floodResiliencyData = await floodResiliencyLoadPromise;
+          if (isCancelled || !map) {
+            return;
+          }
+
+          addFloodResiliencyLayers(
+            map,
+            floodResiliencyData,
+            mapLayersRef.current.floodResiliency
+          );
+        };
+        loadFloodResiliencyRef.current = syncFloodResiliencyWithMap;
+
         const syncHistoricDistrictsWithMap = async () => {
           if (!map) {
             return;
@@ -462,17 +535,26 @@ function MapArea({
             return;
           }
 
-          if (!mapLayersRef.current.historicDistricts) {
-            setHistoricDistrictVisibility(map, false);
-            return;
+          if (!historicDistrictsLoadPromise) {
+            setHistoricDistrictsDataLoading(true);
+            historicDistrictsLoadPromise = fetchHistoricDistricts()
+              .then((historicDistrictsData) => {
+                historicDistrictsDataRef.current = historicDistrictsData;
+                return historicDistrictsData;
+              })
+              .finally(() => {
+                historicDistrictsLoadPromise = null;
+                if (!isCancelled) {
+                  setHistoricDistrictsDataLoading(false);
+                }
+              });
           }
 
-          const historicDistrictsData = await fetchHistoricDistricts();
+          const historicDistrictsData = await historicDistrictsLoadPromise;
           if (isCancelled || !map) {
             return;
           }
 
-          historicDistrictsDataRef.current = historicDistrictsData;
           addHistoricDistrictLayers(
             map,
             historicDistrictsData,
@@ -513,9 +595,19 @@ function MapArea({
             }
 
             try {
+              await syncFloodResiliencyWithMap();
+            } catch (error) {
+              if (!isCancelled) {
+                setFloodResiliencyDataLoading(false);
+                console.error('Failed to load flood resiliency overlay.', error);
+              }
+            }
+
+            try {
               await syncHistoricDistrictsWithMap();
             } catch (error) {
               if (!isCancelled) {
+                setHistoricDistrictsDataLoading(false);
                 console.error('Failed to load historic districts overlay.', error);
               }
             }
@@ -616,6 +708,8 @@ function MapArea({
         setLoadError(message);
         setEnvelopeDataLoading(false);
         setZoningDataLoading(false);
+        setFloodResiliencyDataLoading(false);
+        setHistoricDistrictsDataLoading(false);
       }
     };
 
@@ -628,6 +722,8 @@ function MapArea({
       if (envelopeRoot) {
         disposeThreeObject(envelopeRoot.root);
       }
+      floodResiliencyDataRef.current = null;
+      loadFloodResiliencyRef.current = null;
       historicDistrictsDataRef.current = null;
       loadHistoricDistrictsRef.current = null;
       loadLotRequirementsForBblRef.current = null;
@@ -911,7 +1007,10 @@ function MapArea({
           </div>
         ) : null}
 
-        {envelopeDataLoading || zoningDataLoading ? (
+        {envelopeDataLoading ||
+        zoningDataLoading ||
+        floodResiliencyDataLoading ||
+        historicDistrictsDataLoading ? (
           <div className="map-loading-overlay" aria-live="polite">
             Data Loading...
           </div>
