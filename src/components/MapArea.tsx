@@ -13,6 +13,11 @@ import {
   type BasemapStyleId,
 } from '../lib/basemapStyles';
 import {
+  addHistoricDistrictLayers,
+  fetchHistoricDistricts,
+  setHistoricDistrictVisibility,
+} from '../lib/historicDistricts';
+import {
   buildEnvelopeSceneGroup,
   createMercatorSceneLayer,
   disposeThreeObject,
@@ -212,7 +217,9 @@ function MapArea({
   const mapLayersRef = useRef(mapLayers);
   const basemapStyleRef = useRef(basemapStyle);
   const previousBasemapStyleRef = useRef(basemapStyle);
+  const historicDistrictsDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const envelopeLayerRef = useRef<EnvelopeSceneLayer | null>(null);
+  const loadHistoricDistrictsRef = useRef<(() => Promise<void>) | null>(null);
   const loadLotRequirementsForBblRef = useRef<((bbl: string) => Promise<void>) | null>(
     null
   );
@@ -259,6 +266,11 @@ function MapArea({
         basemapStyleRef.current
       );
       setZoningVisibility(mapRef.current, mapLayers.zoningMap);
+      if (mapLayers.historicDistricts) {
+        void loadHistoricDistrictsRef.current?.();
+      } else {
+        setHistoricDistrictVisibility(mapRef.current, false);
+      }
     }
 
     envelopeLayerRef.current?.setVisible(mapLayers.zoningEnvelopes);
@@ -436,6 +448,39 @@ function MapArea({
         envelopeLayer.setVisible(mapLayersRef.current.zoningEnvelopes);
         envelopeLayerRef.current = envelopeLayer;
 
+        const syncHistoricDistrictsWithMap = async () => {
+          if (!map) {
+            return;
+          }
+
+          if (historicDistrictsDataRef.current) {
+            addHistoricDistrictLayers(
+              map,
+              historicDistrictsDataRef.current,
+              mapLayersRef.current.historicDistricts
+            );
+            return;
+          }
+
+          if (!mapLayersRef.current.historicDistricts) {
+            setHistoricDistrictVisibility(map, false);
+            return;
+          }
+
+          const historicDistrictsData = await fetchHistoricDistricts();
+          if (isCancelled || !map) {
+            return;
+          }
+
+          historicDistrictsDataRef.current = historicDistrictsData;
+          addHistoricDistrictLayers(
+            map,
+            historicDistrictsData,
+            mapLayersRef.current.historicDistricts
+          );
+        };
+        loadHistoricDistrictsRef.current = syncHistoricDistrictsWithMap;
+
         map.on('style.load', () => {
           const syncLayersWithStyle = async () => {
             if (!map) {
@@ -464,6 +509,14 @@ function MapArea({
                     : 'Failed to load zoning overlay.'
                 );
                 setZoningDataLoading(false);
+              }
+            }
+
+            try {
+              await syncHistoricDistrictsWithMap();
+            } catch (error) {
+              if (!isCancelled) {
+                console.error('Failed to load historic districts overlay.', error);
               }
             }
 
@@ -575,6 +628,8 @@ function MapArea({
       if (envelopeRoot) {
         disposeThreeObject(envelopeRoot.root);
       }
+      historicDistrictsDataRef.current = null;
+      loadHistoricDistrictsRef.current = null;
       loadLotRequirementsForBblRef.current = null;
       envelopeLayerRef.current = null;
       mapRef.current = null;
