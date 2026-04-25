@@ -253,6 +253,9 @@ function MapArea({
     ((leftSidebarVisible ? LEFT_SIDEBAR_WIDTH : 0) -
       (rightSidebarVisible ? RIGHT_SIDEBAR_WIDTH : 0)) /
     2;
+  const floatingOverlayCenterStyle = {
+    left: `calc(50% + ${floatingControlsOffset}px)`,
+  };
 
   const clearSelectedLot = useCallback(() => {
     envelopeLayerRef.current?.setSelectedItem(null);
@@ -1042,7 +1045,27 @@ function MapArea({
             <p>Search: {searchError}</p>
           </div>
         ) : null}
-        <div className="map-overlay map-overlay--copyright" aria-hidden="true">
+        <div
+          className="map-overlay map-overlay--footer-note map-overlay--beta-note"
+          style={floatingOverlayCenterStyle}
+        >
+          <p>
+            <span className="map-overlay__line map-overlay__line--caution">
+              CAUTION !
+            </span>
+            <span className="map-overlay__line">Beta Version 0.1</span>
+            <span className="map-overlay__line">
+              Zoning requirements and envelopes are shown for website setup and
+              demonstration purposes only and are NOT accurate or reliable for
+              real zoning analysis.
+            </span>
+          </p>
+        </div>
+        <div
+          className="map-overlay map-overlay--footer-note map-overlay--copyright"
+          style={floatingOverlayCenterStyle}
+          aria-hidden="true"
+        >
           <p>{'\u00A9'} 2026 PLAZA.place. All rights reserved.</p>
         </div>
       </div>
