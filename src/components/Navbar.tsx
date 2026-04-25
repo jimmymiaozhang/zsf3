@@ -6,7 +6,7 @@ function Navbar() {
   return (
     <>
       <header className="navbar">
-        <div className="navbar-logo">Per Lot Automated Zoning Analysis (PLAZA)</div>
+        <div className="navbar-logo">Per-Lot Automated Zoning Analysis (PLAZA)</div>
         <div className="navbar-version">Beta Version 0.1</div>
         <nav className="navbar-menu" aria-label="Primary">
           <button type="button" onClick={() => setAboutOpen(true)}>
