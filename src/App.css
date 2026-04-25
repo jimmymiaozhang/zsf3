@@ -845,3 +845,9 @@
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
+
+.map-loading-overlay__dots {
+  display: inline-block;
+  min-width: 1.1em;
+  text-align: left;
+}
