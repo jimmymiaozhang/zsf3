@@ -48,6 +48,7 @@ function Navbar() {
             <br />
             <p>Beta Version 0.1</p>
             <p>2026-04-24</p>
+            <p>{'\u00A9'} 2026 PLAZA.place. All rights reserved.</p>
           </div>
         </div>
       ) : null}

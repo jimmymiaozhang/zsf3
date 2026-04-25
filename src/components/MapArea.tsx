@@ -1042,6 +1042,9 @@ function MapArea({
             <p>Search: {searchError}</p>
           </div>
         ) : null}
+        <div className="map-overlay map-overlay--copyright" aria-hidden="true">
+          <p>{'\u00A9'} 2026 PLAZA.place. All rights reserved.</p>
+        </div>
       </div>
     </main>
   );
