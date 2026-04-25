@@ -244,6 +244,7 @@ function MapArea({
     useState(true);
   const [historicDistrictsDataLoading, setHistoricDistrictsDataLoading] =
     useState(true);
+  const [loadingDotCount, setLoadingDotCount] = useState(3);
   const [mapBearing, setMapBearing] = useState(DEFAULT_BEARING);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -263,9 +264,30 @@ function MapArea({
     });
   }, [onLotSelectionChange]);
 
+  const isMapLoading =
+    envelopeDataLoading ||
+    zoningDataLoading ||
+    floodResiliencyDataLoading ||
+    historicDistrictsDataLoading;
+
   useEffect(() => {
     mapRef.current?.resize();
   }, [leftSidebarVisible, rightSidebarVisible]);
+
+  useEffect(() => {
+    if (!isMapLoading) {
+      setLoadingDotCount(3);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setLoadingDotCount((current) => (current + 1) % 4);
+    }, 350);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isMapLoading]);
 
   useEffect(() => {
     mapLayersRef.current = mapLayers;
@@ -1007,12 +1029,12 @@ function MapArea({
           </div>
         ) : null}
 
-        {envelopeDataLoading ||
-        zoningDataLoading ||
-        floodResiliencyDataLoading ||
-        historicDistrictsDataLoading ? (
+        {isMapLoading ? (
           <div className="map-loading-overlay" aria-live="polite">
-            Data Loading...
+            <span>Data Loading</span>
+            <span className="map-loading-overlay__dots" aria-hidden="true">
+              {'.'.repeat(loadingDotCount)}
+            </span>
           </div>
         ) : null}
         {searchError ? (

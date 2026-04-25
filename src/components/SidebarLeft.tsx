@@ -95,10 +95,6 @@ function SidebarLeft({
             <>
               <section className="sidebar-section">
                 <h3>Layer</h3>
-                <p className="muted">
-                  Core zoning-envelope overlays and base-map label settings for the
-                  current workspace.
-                </p>
                 <ul className="sidebar-list">
                   {layerRows.map((layer) => {
                     const isClassicStyleRestricted =
@@ -152,12 +148,6 @@ function SidebarLeft({
 
               <section className="sidebar-section">
                 <h3>Style</h3>
-                <p className="muted">
-                  Choose one basemap preset at a time. Turning one on switches the
-                  others off automatically. Standard themes preserve the richest
-                  label and 3D toggle behavior; classic styles are included for
-                  visual review.
-                </p>
                 <ul className="sidebar-list">
                   {BASEMAP_STYLE_PRESETS.map((style) => (
                     <li key={style.id} className="sidebar-row">
