@@ -49,7 +49,7 @@ function SidebarLeft({
   onToggleLayer,
   onHide,
 }: SidebarLeftProps) {
-  const [activeTab, setActiveTab] = useState<'layers' | 'styles' | 'data'>('layers');
+  const [activeTab, setActiveTab] = useState<'display' | 'data'>('display');
   const activeBasemapPreset = getBasemapStylePreset(basemapStyle);
 
   return (
@@ -73,18 +73,11 @@ function SidebarLeft({
       <div className="sidebar-inner">
         <div className="sidebar-toolbar">
           <button
-            className={activeTab === 'layers' ? 'active' : ''}
+            className={activeTab === 'display' ? 'active' : ''}
             type="button"
-            onClick={() => setActiveTab('layers')}
+            onClick={() => setActiveTab('display')}
           >
-            Layers
-          </button>
-          <button
-            className={activeTab === 'styles' ? 'active' : ''}
-            type="button"
-            onClick={() => setActiveTab('styles')}
-          >
-            Styles
+            Map
           </button>
           <button
             className={activeTab === 'data' ? 'active' : ''}
@@ -96,95 +89,95 @@ function SidebarLeft({
         </div>
 
         <div className="sidebar-content">
-          {activeTab === 'layers' ? (
-            <section className="sidebar-section">
-              <h3>Map Layers</h3>
-              <p className="muted">
-                Core zoning-envelope overlays and base-map label settings for the
-                current workspace.
-              </p>
-              <ul className="sidebar-list">
-                {layerRows.map((layer) => {
-                  const isClassicStyleRestricted =
-                    activeBasemapPreset.mode === 'classic' &&
-                    classicStyleDisabledLayerIds.includes(layer.id);
-                  const isLayerOn = isClassicStyleRestricted
-                    ? false
-                    : mapLayers[layer.id];
+          {activeTab === 'display' ? (
+            <>
+              <section className="sidebar-section">
+                <h3>Layer</h3>
+                <p className="muted">
+                  Core zoning-envelope overlays and base-map label settings for the
+                  current workspace.
+                </p>
+                <ul className="sidebar-list">
+                  {layerRows.map((layer) => {
+                    const isClassicStyleRestricted =
+                      activeBasemapPreset.mode === 'classic' &&
+                      classicStyleDisabledLayerIds.includes(layer.id);
+                    const isLayerOn = isClassicStyleRestricted
+                      ? false
+                      : mapLayers[layer.id];
 
-                  return (
-                    <li
-                      key={layer.name}
-                      className={`sidebar-row ${
-                        isClassicStyleRestricted ? 'sidebar-row--disabled' : ''
-                      }`.trim()}
-                    >
-                      <span>{layer.name}</span>
+                    return (
+                      <li
+                        key={layer.name}
+                        className={`sidebar-row ${
+                          isClassicStyleRestricted ? 'sidebar-row--disabled' : ''
+                        }`.trim()}
+                      >
+                        <span>{layer.name}</span>
+                        <button
+                          className={`layer-switch ${
+                            isLayerOn ? 'is-on' : 'is-off'
+                          } ${isClassicStyleRestricted ? 'is-disabled' : ''}`.trim()}
+                          disabled={isClassicStyleRestricted}
+                          type="button"
+                          onClick={() => {
+                            if (!isClassicStyleRestricted) {
+                              onToggleLayer(layer.id);
+                            }
+                          }}
+                          aria-disabled={isClassicStyleRestricted}
+                          aria-pressed={isLayerOn}
+                          aria-label={`${layer.name} ${
+                            isClassicStyleRestricted
+                              ? 'unavailable for this style'
+                              : isLayerOn
+                                ? 'on'
+                                : 'off'
+                          }`}
+                          title={
+                            isClassicStyleRestricted
+                              ? 'Unavailable for the current basemap style'
+                              : undefined
+                          }
+                        >
+                          <span className="layer-switch__thumb" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+
+              <section className="sidebar-section">
+                <h3>Style</h3>
+                <p className="muted">
+                  Choose one basemap preset at a time. Turning one on switches the
+                  others off automatically. Standard themes preserve the richest
+                  label and 3D toggle behavior; classic styles are included for
+                  visual review.
+                </p>
+                <ul className="sidebar-list">
+                  {BASEMAP_STYLE_PRESETS.map((style) => (
+                    <li key={style.id} className="sidebar-row">
+                      <span>{style.name}</span>
                       <button
                         className={`layer-switch ${
-                          isLayerOn ? 'is-on' : 'is-off'
-                        } ${isClassicStyleRestricted ? 'is-disabled' : ''}`.trim()}
-                        disabled={isClassicStyleRestricted}
+                          basemapStyle === style.id ? 'is-on' : 'is-off'
+                        }`.trim()}
                         type="button"
-                        onClick={() => {
-                          if (!isClassicStyleRestricted) {
-                            onToggleLayer(layer.id);
-                          }
-                        }}
-                        aria-disabled={isClassicStyleRestricted}
-                        aria-pressed={isLayerOn}
-                        aria-label={`${layer.name} ${
-                          isClassicStyleRestricted
-                            ? 'unavailable for this style'
-                            : isLayerOn
-                              ? 'on'
-                              : 'off'
+                        onClick={() => onSelectBasemapStyle(style.id)}
+                        aria-pressed={basemapStyle === style.id}
+                        aria-label={`${style.name} ${
+                          basemapStyle === style.id ? 'on' : 'off'
                         }`}
-                        title={
-                          isClassicStyleRestricted
-                            ? 'Unavailable for the current basemap style'
-                            : undefined
-                        }
                       >
                         <span className="layer-switch__thumb" />
                       </button>
                     </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ) : null}
-
-          {activeTab === 'styles' ? (
-            <section className="sidebar-section">
-              <h3>Basemap Styles</h3>
-              <p className="muted">
-                Choose one basemap preset at a time. Turning one on switches the
-                others off automatically. Standard themes preserve the richest
-                label and 3D toggle behavior; classic styles are included for
-                visual review.
-              </p>
-              <ul className="sidebar-list">
-                {BASEMAP_STYLE_PRESETS.map((style) => (
-                  <li key={style.id} className="sidebar-row">
-                    <span>{style.name}</span>
-                    <button
-                      className={`layer-switch ${
-                        basemapStyle === style.id ? 'is-on' : 'is-off'
-                      }`.trim()}
-                      type="button"
-                      onClick={() => onSelectBasemapStyle(style.id)}
-                      aria-pressed={basemapStyle === style.id}
-                      aria-label={`${style.name} ${
-                        basemapStyle === style.id ? 'on' : 'off'
-                      }`}
-                    >
-                      <span className="layer-switch__thumb" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+                  ))}
+                </ul>
+              </section>
+            </>
           ) : null}
 
           {activeTab === 'data' ? (
